@@ -76,6 +76,7 @@ import {
   getMissedWords,
   getWordBurstHistory,
 } from "./events/stats";
+import type { MistakeOccurrence } from "./mistake-summary";
 
 export const updateHintsPositionDebounced = Misc.debounceUntilResolved(
   updateHintsPosition,
@@ -209,6 +210,7 @@ function createHintsHtml(
   activeWordLetters: ElementsWithUtils,
   input: string | string[],
   wrapWithDiv: boolean = true,
+  wrapperClass: "hints" | "typedHints" = "hints",
 ): string {
   // if input is an array, it contains only incorrect letters input.
   // if input is a string, it contains the whole word input.
@@ -222,16 +224,16 @@ function createHintsHtml(
     for (const letterIndex of adjacentLetters) {
       const letter = activeWordLetters[letterIndex] as ElementWithUtils;
       const blockIndices = `${letterIndex}`;
-      const blockChars = isFullWord
-        ? inputChars[letterIndex]
-        : inputChars[currentHint++];
+      const blockChars = displayTypedChar(
+        isFullWord ? inputChars[letterIndex] : inputChars[currentHint++],
+      );
 
       hintsHtml += `<hint data-chars-index=${blockIndices} style="left:${
         letter.getOffsetLeft() + letter.getOffsetWidth() / 2
       }px;">${blockChars}</hint>`;
     }
   }
-  if (wrapWithDiv) hintsHtml = `<div class="hints">${hintsHtml}</div>`;
+  if (wrapWithDiv) hintsHtml = `<div class="${wrapperClass}">${hintsHtml}</div>`;
   return hintsHtml;
 }
 
@@ -320,10 +322,13 @@ async function joinOverlappingHints(
 }
 
 async function updateHintsPosition(): Promise<void> {
+  const hasTypedHints = document.querySelector(".typedHints hint") !== null;
   if (
     getActivePage() !== "test" ||
     TestState.resultVisible ||
-    (Config.indicateTypos !== "below" && Config.indicateTypos !== "both")
+    (!hasTypedHints &&
+      Config.indicateTypos !== "below" &&
+      Config.indicateTypos !== "both")
   ) {
     return;
   }
@@ -332,7 +337,9 @@ async function updateHintsPosition(): Promise<void> {
   let hintIndices: number[][] = [];
   let hintText: string[] = [];
 
-  const hintElements = document.querySelectorAll<HTMLElement>(".hints > hint");
+  const hintElements = document.querySelectorAll<HTMLElement>(
+    ".hints > hint, .typedHints > hint",
+  );
 
   for (const hintEl of hintElements) {
     const hintsContainer = hintEl.parentElement as HTMLElement;
@@ -768,6 +775,8 @@ export async function updateWordLetters({
       const wordAtIndex = getWordElement(wordIndex);
       if (!wordAtIndex) return;
       const hintIndices: number[][] = [];
+      const typedHintIndices: number[][] = [];
+      const hadTypedHints = wordAtIndex.hasClass("hasTypedHints");
 
       let newlineafter = false;
 
@@ -820,6 +829,15 @@ export async function updateWordLetters({
             ret += `<letter class="incorrect extra ${tabChar}${nlChar}">${letter}</letter>`;
           } else {
             let charString = currentLetter;
+
+            if (!Config.blindMode) {
+              const lastBlock = typedHintIndices[typedHintIndices.length - 1];
+              if (lastBlock && lastBlock[lastBlock.length - 1] === i - 1) {
+                lastBlock.push(i);
+              } else {
+                typedHintIndices.push([i]);
+              }
+            }
 
             if (
               Config.indicateTypos === "replace" ||
@@ -880,6 +898,29 @@ export async function updateWordLetters({
 
       wordAtIndex.setHtml(ret);
 
+      if (typedHintIndices.length) {
+        const wordAtIndexLetters = wordAtIndex.qsa("letter");
+        wordAtIndex.addClass("hasTypedHints");
+        wordAtIndex.appendHtml(
+          createHintsHtml(
+            typedHintIndices,
+            wordAtIndexLetters,
+            input,
+            true,
+            "typedHints",
+          ),
+        );
+        const typedHintElements =
+          wordAtIndex.native.getElementsByTagName("hint");
+        await joinOverlappingHints(
+          typedHintIndices,
+          wordAtIndexLetters,
+          typedHintElements,
+        );
+      } else {
+        wordAtIndex.removeClass("hasTypedHints");
+      }
+
       if (hintIndices?.length) {
         const wordAtIndexLetters = wordAtIndex.qsa("letter");
         let hintsHtml;
@@ -893,12 +934,20 @@ export async function updateWordLetters({
           hintsHtml = createHintsHtml(hintIndices, wordAtIndexLetters, input);
         }
         wordAtIndex.appendHtml(hintsHtml);
-        const hintElements = wordAtIndex.native.getElementsByTagName("hint");
-        await joinOverlappingHints(
-          hintIndices,
-          wordAtIndexLetters,
-          hintElements,
-        );
+        const hintElements = wordAtIndex.native
+          .querySelector(".hints")
+          ?.getElementsByTagName("hint");
+        if (hintElements) {
+          await joinOverlappingHints(
+            hintIndices,
+            wordAtIndexLetters,
+            hintElements,
+          );
+        }
+      }
+
+      if (hadTypedHints !== (typedHintIndices.length > 0)) {
+        updateWordsWrapperHeight(true);
       }
 
       if (newlineafter) {
@@ -1313,23 +1362,23 @@ function buildWordLettersHTML(
     if (Config.mode === "zen" || targetChar !== undefined) {
       if (Config.mode === "zen" || inputChar === targetChar) {
         if (correctedChar === inputChar || correctedChar === undefined) {
-          out += `<letter class="correct ${extraCorrected}">${displayLetter}</letter>`;
+          out += `<letter data-charindex="${c}" class="correct ${extraCorrected}">${displayLetter}</letter>`;
         } else {
-          out += `<letter class="corrected ${extraCorrected}">${
+          out += `<letter data-charindex="${c}" class="corrected ${extraCorrected}">${
             displayLetter
           }</letter>`;
         }
       } else {
         if (inputChar === undefined) {
-          out += `<letter>${targetChar}</letter>`;
+          out += `<letter data-charindex="${c}">${targetChar}</letter>`;
         } else {
-          out += `<letter class="incorrect ${extraCorrected}">${
+          out += `<letter data-charindex="${c}" class="incorrect ${extraCorrected}">${
             targetChar
           }</letter>`;
         }
       }
     } else {
-      out += `<letter class="incorrect extra">${displayLetter}</letter>`;
+      out += `<letter data-charindex="${c}" class="incorrect extra">${displayLetter}</letter>`;
     }
   }
   return out;
@@ -1357,6 +1406,7 @@ async function loadWordsHistory(): Promise<boolean> {
 
     const wordEl = document.createElement("div");
     wordEl.className = "word";
+    wordEl.dataset["wordindex"] = String(i);
 
     if (input !== "" && input !== undefined) {
       wordEl.classList.add("nocursor");
@@ -1456,6 +1506,72 @@ export async function toggleResultWords(noAnimation = false): Promise<void> {
   } else {
     void resultWordsHistoryEl.slideUp(noAnimation ? 0 : 250);
   }
+}
+
+export async function highlightResultMistakes(
+  occurrences: MistakeOccurrence[],
+): Promise<void> {
+  if (resultWordsHistoryEl.isHidden()) {
+    await toggleResultWords();
+  }
+
+  qsa("#resultWordsHistory .mistakeHighlight").removeClass("mistakeHighlight");
+  qsa("#resultWordsHistory .hasMistakeTypedCharacters").removeClass(
+    "hasMistakeTypedCharacters",
+  );
+  qsa("#resultWordsHistory .mistakeTypedCharacters").remove();
+  for (const occurrence of occurrences) {
+    const wordEl = qs(
+      `#resultWordsHistory .word[data-wordindex='${occurrence.wordIndex}']`,
+    );
+    wordEl?.addClass("mistakeHighlight");
+
+    for (const index of new Set([
+      ...occurrence.inputIndices,
+      ...occurrence.targetIndices,
+    ])) {
+      const letter = wordEl?.qs(`letter[data-charindex='${index}']`);
+      if (letter) {
+        letter.addClass("mistakeHighlight");
+      } else if (occurrence.type === "extra_letter") {
+        const letters = wordEl?.qsa("letter");
+        if (letters && letters.length > 0) {
+          letters[letters.length - 1]?.addClass("mistakeHighlight");
+        }
+      }
+    }
+
+    const typedCharactersHtml = Object.entries(occurrence.typedCharacters)
+      .map(([index, character]) => {
+        const letter = wordEl?.qs(`letter[data-charindex='${index}']`);
+        const highlightedLetter =
+          letter ??
+          (occurrence.type === "extra_letter"
+            ? wordEl?.qsa("letter").at(-1)
+            : undefined);
+        if (!highlightedLetter) return "";
+
+        return `<hint style="left:${
+          highlightedLetter.getOffsetLeft() +
+          highlightedLetter.getOffsetWidth() / 2
+        }px;">${displayTypedChar(character)}</hint>`;
+      })
+      .join("");
+    if (typedCharactersHtml !== "") {
+      wordEl?.addClass("hasMistakeTypedCharacters");
+      wordEl?.appendHtml(
+        `<div class="mistakeTypedCharacters">${typedCharactersHtml}</div>`,
+      );
+    }
+  }
+}
+
+export function clearResultMistakeHighlights(): void {
+  qsa("#resultWordsHistory .mistakeHighlight").removeClass("mistakeHighlight");
+  qsa("#resultWordsHistory .hasMistakeTypedCharacters").removeClass(
+    "hasMistakeTypedCharacters",
+  );
+  qsa("#resultWordsHistory .mistakeTypedCharacters").remove();
 }
 
 export async function applyBurstHeatmap(): Promise<void> {

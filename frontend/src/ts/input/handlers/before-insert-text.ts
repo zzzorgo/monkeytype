@@ -1,15 +1,12 @@
 import { Config } from "../../config/store";
 import * as TestState from "../../test/test-state";
-import * as TestUI from "../../test/test-ui";
 import * as TestWords from "../../test/test-words";
 import { isFunboxActiveWithProperty } from "../../test/funbox/list";
 import { getInputElementValue } from "../input-element";
 import { isAwaitingNextWord } from "../state";
-import * as SlowTimer from "../../legacy-states/slow-timer";
 import { wordsHaveNewline } from "../../states/test";
 import { shouldGoToNextWord } from "../helpers/validation";
 import { getCommitCharacterType, normalizeData } from "../helpers/util";
-import { getCurrentInput } from "../../test/events/data";
 import { isSpace } from "../../utils/strings";
 
 /**
@@ -43,7 +40,6 @@ export function onBeforeInsertText(data: string): boolean {
   const { inputValue } = getInputElementValue();
   const currentWordObj = TestWords.words.getCurrent();
   const currentWordTextWithCommit = currentWordObj?.textWithCommit ?? "";
-  const currentWordTextDisplay = currentWordObj?.display ?? "";
 
   //normalize visually-equivalent chars (e.g. IME U+3000 space) to the target
   //char, matching onInsertText, so commit classification is consistent
@@ -80,42 +76,6 @@ export function onBeforeInsertText(data: string): boolean {
   if (overLimit && !goingToNextWord) {
     console.error("Hitting word limit");
     return true;
-  }
-
-  // prevent the word from jumping to the next line if the word is too long
-  // this will not work for the first word of each line, but that has a low chance of happening
-  const dataIsNotFalsy = data !== null && data !== "";
-  const inputIsLongerThanOrEqualToWord =
-    getCurrentInput().length >= currentWordTextDisplay.length;
-
-  if (
-    !SlowTimer.get() && // don't do this check if slow timer is active
-    dataIsNotFalsy &&
-    !Config.blindMode &&
-    !Config.hideExtraLetters &&
-    inputIsLongerThanOrEqualToWord &&
-    !goingToNextWord &&
-    Config.mode !== "zen"
-  ) {
-    // make sure to only check this when really necessary
-    // because this check is expensive (causes layout reflows)
-
-    // if there is pending word data, we need to account for that
-    const pendingWordData = TestUI.pendingWordData.get(
-      TestState.activeWordIndex,
-    );
-    const { top: topAfterAppend, height: heightAfterAppend } =
-      TestUI.getActiveWordTopAndHeightWithDifferentData(
-        (pendingWordData ?? inputValue) + data,
-      );
-    if (topAfterAppend > TestUI.activeWordTop) {
-      //word jumped to next line
-      return true;
-    }
-    if (heightAfterAppend > TestUI.activeWordHeight) {
-      // letters wrapped to next line
-      return true;
-    }
   }
 
   return false;

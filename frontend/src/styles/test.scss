@@ -196,6 +196,7 @@
   flex-wrap: wrap;
   width: 100%;
   align-content: flex-start;
+  align-items: flex-end;
   user-select: none;
 
   .newline {
@@ -226,6 +227,8 @@
   --extra-letter-animation: none;
 
   .word {
+    padding-top: 0.75em;
+
     letter {
       color: var(--untyped-letter-color);
       animation: var(--untyped-letter-animation);
@@ -294,6 +297,22 @@
       padding: 1px;
       left: 0;
       opacity: 0.5;
+      text-align: center;
+      display: grid;
+      justify-content: center;
+      transform: translate(-50%);
+    }
+
+    & .typedHints hint {
+      position: absolute;
+      top: 0;
+      color: var(--text-color);
+      animation: var(--correct-letter-animation);
+      font-size: 0.65em;
+      line-height: 0.75em;
+      text-shadow: none;
+      padding: 1px;
+      left: 0;
       text-align: center;
       display: grid;
       justify-content: center;
@@ -822,9 +841,11 @@
         flex-wrap: wrap;
         width: 100%;
         align-content: flex-start;
+        align-items: flex-end;
         .word {
           position: relative;
           margin: 0.18rem 0.6rem 0.15rem 0;
+          padding-top: 0.75em;
           & letter.corrected {
             color: var(--text-color);
             border-bottom: 2px dotted var(--main-color);
@@ -867,6 +888,68 @@
             }
           }
         }
+      }
+    }
+
+    #resultMistakeSummary {
+      color: var(--sub-color);
+      margin-bottom: 1rem;
+
+      .title {
+        user-select: none;
+        margin-bottom: 0.25rem;
+      }
+
+      table {
+        border-collapse: collapse;
+        min-width: 14rem;
+      }
+
+      th,
+      td {
+        padding: 0.25rem 0.75rem;
+        text-align: left;
+      }
+
+      th {
+        border-bottom: 1px solid var(--sub-alt-color);
+        font-weight: normal;
+      }
+
+      th:last-child,
+      td:last-child {
+        text-align: right;
+      }
+
+      .mistakeSummaryRow {
+        cursor: default;
+
+        &:hover td {
+          color: var(--text-color);
+          background-color: var(--sub-alt-color);
+        }
+      }
+    }
+
+    #resultWordsHistory {
+      .word.mistakeHighlight letter.mistakeHighlight {
+        color: var(--bg-color);
+        background-color: var(--main-color);
+        border-radius: 0;
+      }
+
+      .mistakeTypedCharacters hint {
+        position: absolute;
+        top: 0;
+        color: var(--text-color);
+        font-size: 0.65em;
+        line-height: 0.75em;
+        text-shadow: none;
+        padding: 1px;
+        text-align: center;
+        display: grid;
+        justify-content: center;
+        transform: translate(-50%);
       }
     }
 

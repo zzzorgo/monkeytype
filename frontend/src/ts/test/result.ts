@@ -63,6 +63,12 @@ import {
   getRawHistory,
   getTimerBoundaryLabels,
 } from "./events/stats";
+import {
+  getMistakeAnalysis,
+  getMistakeLabel,
+  type MistakeOccurrence,
+  type MistakeType,
+} from "./mistake-summary";
 
 let result: CompletedEvent;
 let minChartVal: number;
@@ -95,6 +101,50 @@ export function toggleUserFakeChartData(): void {
 }
 
 let resultAnnotation: AnnotationOptions<"line">[] = [];
+let mistakeOccurrences: MistakeOccurrence[] = [];
+let highlightedMistakeType: MistakeType | undefined;
+
+function updateMistakeSummary(): void {
+  const analysis = TestState.lastEventLog
+    ? getMistakeAnalysis(TestState.lastEventLog)
+    : { summary: [], occurrences: [] };
+  const { summary } = analysis;
+  mistakeOccurrences = analysis.occurrences;
+  highlightedMistakeType = undefined;
+  const summaryEl = qs("#resultMistakeSummary");
+  const summaryBody = qs("#resultMistakeSummary tbody");
+
+  summaryBody?.empty();
+  if (summary.length === 0) {
+    summaryBody?.appendHtml(
+      '<tr><td colspan="2">No mistakes recorded</td></tr>',
+    );
+  } else {
+    for (const { type, count } of summary) {
+      const row = document.createElement("tr");
+      row.className = "mistakeSummaryRow";
+      row.innerHTML = `<td>${getMistakeLabel(type)}</td><td>${count}</td>`;
+      row.addEventListener("mouseenter", () => {
+        highlightedMistakeType = type;
+        void TestUI.highlightResultMistakes(
+          mistakeOccurrences.filter((occurrence) => occurrence.type === type),
+        ).then(() => {
+          if (highlightedMistakeType !== type) {
+            TestUI.clearResultMistakeHighlights();
+          }
+        });
+      });
+      row.addEventListener("mouseleave", () => {
+        if (highlightedMistakeType === type) {
+          highlightedMistakeType = undefined;
+          TestUI.clearResultMistakeHighlights();
+        }
+      });
+      summaryBody?.native.append(row);
+    }
+  }
+  summaryEl?.show();
+}
 
 async function updateChartData(): Promise<void> {
   if (result.chartData === "toolong" || TestState.lastEventLog === null) {
@@ -945,6 +995,7 @@ export async function update(
   hideCrown();
   qs("#resultWordsHistory .words")?.empty();
   qs("#result #resultWordsHistory")?.hide();
+  qs("#result #resultMistakeSummary")?.hide();
   qs("#result #replayStats")?.setText("");
   qs("#result #resultReplay")?.hide();
   qs("#result #replayWords")?.empty();
@@ -987,6 +1038,7 @@ export async function update(
   applyMinMaxChartValues();
   await updateTags(dontSave);
   updateOther(difficultyFailed, failReason, afkDetected, isRepeated, tooShort);
+  updateMistakeSummary();
 
   ((ChartController.result.options as PluginChartOptions<"line" | "scatter">)
     .plugins.annotation.annotations as AnnotationOptions<"line">[]) =
@@ -1019,6 +1071,7 @@ export async function update(
     qsa("main #result .stats")?.hide();
     qs("main #result .chart")?.hide();
     qs("main #result #resultWordsHistory")?.hide();
+    qs("main #result #resultMistakeSummary")?.hide();
     qs("main #result #resultReplay")?.hide();
     qs("main #result .loginTip")?.hide();
     qs("main #result #showWordHistoryButton")?.hide();

@@ -1,16 +1,33 @@
+# syntax=docker/dockerfile:1.7
 FROM node:24.11.0-alpine3.22 AS builder
 
 WORKDIR /app
 
-#copy
+# Install pnpm once; keep its package store between Docker builds.
+RUN npm i -g pnpm@10.28.1
+
+# Copy only dependency manifests before installing. Source changes then reuse this
+# layer, while the cache mount also avoids re-downloading packages after a cache miss.
 COPY ["package.json", "pnpm-lock.yaml", "pnpm-workspace.yaml", "turbo.json", "./"]
+COPY ["backend/package.json", "backend/package.json"]
+COPY ["packages/challenges/package.json", "packages/challenges/package.json"]
+COPY ["packages/contracts/package.json", "packages/contracts/package.json"]
+COPY ["packages/funbox/package.json", "packages/funbox/package.json"]
+COPY ["packages/oxlint-config/package.json", "packages/oxlint-config/package.json"]
+COPY ["packages/release/package.json", "packages/release/package.json"]
+COPY ["packages/schemas/package.json", "packages/schemas/package.json"]
+COPY ["packages/tsup-config/package.json", "packages/tsup-config/package.json"]
+COPY ["packages/typescript-config/package.json", "packages/typescript-config/package.json"]
+COPY ["packages/util/package.json", "packages/util/package.json"]
+
+RUN --mount=type=cache,id=monkeytype-pnpm-store,target=/pnpm/store,sharing=locked \
+    pnpm config set store-dir /pnpm/store && \
+    pnpm i --frozen-lockfile
+
 COPY packages packages
 COPY backend backend
 
-#gimme pnpm + build
-RUN npm i -g pnpm@10.28.1 && \
-    pnpm i --frozen-lockfile && \
-    npm run build
+RUN npm run build
 
 #deploy (install all non-dev dependencies in a single node_module folder)
 RUN pnpm deploy --legacy --filter backend --prod /prod/backend

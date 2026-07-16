@@ -51,7 +51,7 @@ export function Logo(): JSXElement {
           )}
           data-ui-element="logoSubtext"
         >
-          {isDevEnvironment() ? "localhost" : "monkey see"}
+          {isDevEnvironment() ? "localhost" : "monkey see 1"}
         </div>
         <h1
           class={cn("-mt-[0.11em] text-text transition-colors duration-250", {

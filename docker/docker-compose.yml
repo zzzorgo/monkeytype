@@ -3,16 +3,26 @@ version: "3.8"
 services:
   monkeytype-frontend:
     container_name: monkeytype-frontend
-    image: monkeytype/monkeytype-frontend:latest
+
+    build:
+      context: ..
+      dockerfile: docker/frontend/Dockerfile
+
+    image: monkeytype-frontend-local:latest
+
     ports:
-      - "${HTTP_PORT:-8080}:80"
+      - "${HTTP_PORT:-8089}:80"
+
     restart: on-failure
+
     depends_on:
       monkeytype-backend:
         condition: service_healthy
+
     env_file:
       - path: ./.env
         required: true
+
     environment:
       - FIREBASE_APIKEY=${FIREBASE_APIKEY:-}
       - FIREBASE_AUTHDOMAIN=${FIREBASE_AUTHDOMAIN:-}
@@ -25,10 +35,18 @@ services:
 
   monkeytype-backend:
     container_name: monkeytype-backend
-    image: monkeytype/monkeytype-backend:latest
+
+    build:
+      context: ..
+      dockerfile: docker/backend/Dockerfile
+
+    image: monkeytype-backend-local:latest
+
     ports:
       - "${BACKEND_PORT:-5005}:5005"
+
     restart: on-failure
+
     environment:
       - DB_NAME=monkeytype
       - DB_URI=mongodb://monkeytype-mongodb:27017
@@ -40,21 +58,19 @@ services:
       - EMAIL_USER=${EMAIL_USER:-}
       - EMAIL_PASS=${EMAIL_PASS:-}
       - EMAIL_FROM=${EMAIL_FROM:-}
+
     volumes:
-      #uncomment to enable the account system, check the SELF_HOSTING.md file
-      #- type: bind
-      #  source: ./serviceAccountKey.json
-      #  target: /app/backend/src/credentials/serviceAccountKey.json
-      #  read_only: true
       - type: bind
         source: ./backend-configuration.json
         target: /app/backend/dist/backend-configuration.json
         read_only: true
+
     depends_on:
       monkeytype-redis:
         condition: service_healthy
       monkeytype-mongodb:
         condition: service_healthy
+
     healthcheck:
       test: ["CMD", "nc", "-z", "-v", "localhost", "5005"]
       interval: 5s
