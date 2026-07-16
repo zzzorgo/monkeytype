@@ -888,7 +888,7 @@ export const configMetadata: ConfigMetadataObject = {
     displayString: "show all lines",
     group: "appearance",
     description:
-      "When enabled, the website will show all lines for word, custom and quote mode tests - otherwise the lines will be limited to 3, and will automatically scroll. Using this could cause the timer text and live speed to not be visible.",
+      "When enabled, the website will show all lines for word, custom and quote mode tests. Otherwise, it shows all lines that fit on screen and automatically scrolls longer tests. Using this could cause the timer text and live speed to not be visible.",
     isBlocked: ({ value, currentConfig }) => {
       if (value && currentConfig.tapeMode !== "off") {
         showNoticeNotification("Show all lines doesn't support tape mode.");

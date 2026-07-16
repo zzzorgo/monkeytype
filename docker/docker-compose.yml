@@ -86,7 +86,7 @@ services:
     #  - "${REDIS_PORT:-6379}:6379"
     restart: on-failure
     volumes:
-      - redis-data:/data
+      - ../.volumes/redis-data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 5s
@@ -99,7 +99,7 @@ services:
     image: mongo:5.0.13
     restart: on-failure
     volumes:
-      - mongo-data:/data/db
+      - ../.volumes/mongo-data:/data/db
     #uncomment if you want to expose the mongodb server
     #ports:
     #  - "${MONGO_PORT:-27017}:27017"
@@ -110,8 +110,3 @@ services:
       retries: 15
       start_period: 10s
 
-volumes:
-  mongo-data:
-    name: monkeytype_mongo_data
-  redis-data:
-    name: monkeytype_redis_data

@@ -85,12 +85,27 @@ export const updateHintsPositionDebounced = Misc.debounceUntilResolved(
 
 const wordsEl = qsr(".pageTest #words");
 const wordsWrapperEl = qsr(".pageTest #wordsWrapper");
+const typingTestEl = qsr(".pageTest #typingTest");
+const testPageEl = qsr(".pageTest");
 const resultWordsHistoryEl = qsr(".pageTest #resultWordsHistory");
 
 export let activeWordTop = 0;
 export let activeWordHeight = 0;
 let wordTopBeforeLineJump = 0;
 let lineTransition = false;
+let allLinesFitInViewport = false;
+
+function shouldShowAllLines(): boolean {
+  return Config.showAllLines || allLinesFitInViewport;
+}
+
+function canShowAllLinesInViewport(): boolean {
+  const nonWordsHeight =
+    typingTestEl.getOffsetHeight() - wordsWrapperEl.getOffsetHeight();
+  const availableWordsHeight = testPageEl.getOffsetHeight() - nonWordsHeight;
+
+  return wordsEl.getOffsetHeight() <= availableWordsHeight;
+}
 
 // #words is still vanilla; the warning itself is Solid (OutOfFocusWarning.tsx).
 // show/hideOutOfFocus live in states/test so commandline needn't import test-ui.
@@ -189,7 +204,7 @@ export function updateActiveElement(
         (Config.mode === "custom" && CustomText.getLimitMode() === "time") ||
         (Config.mode === "custom" && CustomText.getLimitValue() === 0);
 
-      if (isTimedTest || !Config.showAllLines) {
+      if (isTimedTest || !shouldShowAllLines()) {
         const newActiveWordTop = newActiveWord.getOffsetTop();
         if (newActiveWordTop > previousActiveWordTop) {
           await lineJump(previousActiveWordTop);
@@ -503,7 +518,7 @@ function updateWordWrapperClasses(): void {
 
   updateWordsWidth();
   updateWordsWrapperHeight(true);
-  if (!Config.showAllLines) {
+  if (!shouldShowAllLines()) {
     void centerActiveLine();
   }
   updateWordsMargin();
@@ -597,7 +612,7 @@ export function updateWordsInputPosition(): void {
 let centeringActiveLine: Promise<void> = Promise.resolve();
 
 export async function centerActiveLine(): Promise<void> {
-  if (Config.showAllLines) {
+  if (shouldShowAllLines()) {
     return;
   }
 
@@ -644,8 +659,14 @@ export function updateWordsWrapperHeight(force = false): void {
     (Config.mode === "custom" && CustomText.getLimitValue() === 0);
 
   const showAllLines = Config.showAllLines && !timedTest;
+  allLinesFitInViewport =
+    !showAllLines &&
+    !timedTest &&
+    Config.mode !== "zen" &&
+    Config.tapeMode === "off" &&
+    canShowAllLinesInViewport();
 
-  if (showAllLines) {
+  if (showAllLines || allLinesFitInViewport) {
     //allow the wrapper to grow and shink with the words
     wordsWrapperEl.setStyle({ height: "" });
   } else if (Config.mode === "zen") {
@@ -686,7 +707,7 @@ export function updateWordsWrapperHeight(force = false): void {
     }
   }
 
-  setOutOfFocusMaxHeight(wordHeight * 3);
+  setOutOfFocusMaxHeight(wordsWrapperEl.getOffsetHeight());
 }
 
 function updateWordsMargin(): void {
@@ -964,7 +985,7 @@ export async function updateWordLetters({
         // this check only needs to happen in zen mode
         // unless slow timer is on, then it needs to happen
         // because the word jump check is disabled
-        if (!Config.showAllLines) {
+        if (!shouldShowAllLines()) {
           const wordTopAfterUpdate = wordAtIndex.getOffsetTop();
           if (wordTopAfterUpdate > activeWordTop) {
             let jump = false;
@@ -2103,6 +2124,8 @@ qs(".pageTest #result #wpmChart")?.on("mouseenter", () => {
 
 addEventListener("resize", () => {
   ResultWordHighlight.destroy();
+  updateWordsWrapperHeight(true);
+  if (!shouldShowAllLines()) void centerActiveLine();
 });
 
 qs("#wordsInput")?.on("focus", (e) => {
