@@ -1,5 +1,6 @@
 import { compare } from "bcrypt";
 import { getApeKey, updateLastUsedOn } from "../dal/ape-keys";
+import { ensureLocalUser } from "../dal/user";
 import MonkeyError from "../utils/error";
 import { verifyIdToken } from "../utils/auth";
 import { base64UrlDecode, isDevEnvironment } from "../utils/misc";
@@ -35,6 +36,12 @@ const DEFAULT_OPTIONS: RequestAuthenticationOptions = {
   isPublicOnDev: false,
 };
 
+const LOCAL_USER: DecodedToken = {
+  type: "Bearer",
+  uid: "local_user",
+  email: "local@localhost",
+};
+
 /**
  * Authenticate request based on the auth settings of the route.
  * By default a Bearer token with user authentication is required.
@@ -67,7 +74,10 @@ export function authenticateTsRestRequest<
     } = req.headers;
 
     try {
-      if (options.isGithubWebhook) {
+      if (process.env["BYPASS_FIREBASE"] === "true") {
+        token = LOCAL_USER;
+        await ensureLocalUser("local", token.email, token.uid);
+      } else if (options.isGithubWebhook) {
         token = authenticateGithubWebhook(req, githubWebhookHeader);
       } else if (authHeader !== undefined && authHeader !== "") {
         token = await authenticateWithAuthHeader(

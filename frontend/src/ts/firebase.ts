@@ -1,13 +1,5 @@
+import { FirebaseError } from "firebase/app";
 import {
-  FirebaseApp,
-  FirebaseError,
-  FirebaseOptions,
-  getApp,
-  getApps,
-  initializeApp,
-} from "firebase/app";
-import {
-  getAuth,
   Auth as AuthType,
   User,
   setPersistence as firebaseSetPersistence,
@@ -18,24 +10,17 @@ import {
   getIdToken as firebaseGetIdToken,
   UserCredential,
   AuthProvider,
-  onAuthStateChanged,
   indexedDBLocalPersistence,
   getAdditionalUserInfo,
 } from "firebase/auth";
 import { promiseWithResolvers } from "./utils/misc";
-import { isDevEnvironment } from "./utils/env";
 import { createErrorMessage } from "./utils/error";
 
-import {
-  Analytics as AnalyticsType,
-  getAnalytics as firebaseGetAnalytics,
-} from "firebase/analytics";
+import { Analytics as AnalyticsType } from "firebase/analytics";
 import { tryCatch } from "@monkeytype/util/trycatch";
 import { googleSignUpEvent } from "./events/google-sign-up";
-import { addBanner } from "./states/banners";
 import { setUserId, setUserVerified } from "./states/core";
 
-let app: FirebaseApp | undefined;
 let Auth: AuthType | undefined;
 
 /**
@@ -50,45 +35,10 @@ const { promise: authPromise, resolve: resolveAuthPromise } =
   promiseWithResolvers();
 
 export async function init(callback: ReadyCallback): Promise<void> {
-  try {
-    let firebaseConfig: FirebaseOptions | null;
-
-    firebaseConfig = (
-      (await import("./constants/firebase-config")) as {
-        firebaseConfig: FirebaseOptions;
-      }
-    ).firebaseConfig;
-
-    readyCallback = callback;
-    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    Auth = getAuth(app);
-
-    const rememberMe =
-      window.localStorage.getItem("firebasePersistence") === "LOCAL";
-    await setPersistence(rememberMe, false);
-
-    onAuthStateChanged(Auth, async (user) => {
-      if (!ignoreAuthCallback) {
-        setUserState(user);
-        await callback(true, user);
-      }
-    });
-  } catch (e) {
-    app = undefined;
-    Auth = undefined;
-    console.error("Firebase failed to initialize", e);
-    await callback(false, null);
-    setUserState(null);
-    if (isDevEnvironment()) {
-      addBanner({
-        level: "notice",
-        text: "Dev Info: Firebase failed to initialize",
-        icon: "fas fa-exclamation-triangle",
-      });
-    }
-  } finally {
-    resolveAuthPromise();
-  }
+  readyCallback = callback;
+  setUserState({ uid: "local_user", emailVerified: true });
+  await callback(true, null);
+  resolveAuthPromise();
 }
 
 /**
@@ -100,11 +50,11 @@ export function getAuthenticatedUser(): User | null {
 }
 
 export function getAnalytics(): AnalyticsType {
-  return firebaseGetAnalytics(app);
+  throw new Error("Analytics disabled in local mode");
 }
 
 export function isAuthAvailable(): boolean {
-  return Auth !== undefined;
+  return true;
 }
 
 export async function signOut(): Promise<void> {

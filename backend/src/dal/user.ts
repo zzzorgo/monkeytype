@@ -110,6 +110,34 @@ export async function addUser(
   }
 }
 
+/** Create the fixed local user when Firebase is bypassed. */
+export async function ensureLocalUser(
+  name: string,
+  email: string,
+  uid: string,
+): Promise<void> {
+  await getUsersCollection().updateOne(
+    { uid },
+    {
+      $setOnInsert: {
+        name,
+        email,
+        uid,
+        addedAt: Date.now(),
+        personalBests: {
+          time: {},
+          words: {},
+          quote: {},
+          zen: {},
+          custom: {},
+        },
+        testActivity: {},
+      },
+    },
+    { upsert: true },
+  );
+}
+
 export async function deleteUser(uid: string): Promise<void> {
   await getUsersCollection().deleteOne({ uid });
 }

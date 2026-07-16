@@ -38,7 +38,12 @@ import {
 import { createSignalWithSetters } from "./hooks/createSignalWithSetters";
 import { createEffectOn } from "./hooks/effects";
 import * as Sentry from "./sentry";
-import { getUserId, isAuthenticated, setUserId } from "./states/core";
+import {
+  getUserId,
+  isAuthenticated,
+  setUserId,
+  setUserVerified,
+} from "./states/core";
 import { hideLoaderBar, showLoaderBar } from "./states/loader-bar";
 import {
   showErrorNotification,
@@ -205,7 +210,7 @@ async function getDataAndInit(): Promise<boolean> {
   }
 }
 
-export async function loadUser(_user: UserType): Promise<void> {
+export async function loadUser(_user?: UserType): Promise<void> {
   if (!(await getDataAndInit())) {
     signOut();
     return;
@@ -214,31 +219,18 @@ export async function loadUser(_user: UserType): Promise<void> {
 }
 
 export async function onAuthStateChanged(
-  authInitialisedAndConnected: boolean,
-  user: UserType | null,
+  _authInitialisedAndConnected: boolean,
+  _user: UserType | null,
 ): Promise<void> {
   console.debug(`account controller ready`);
 
-  let userPromise: Promise<void> = Promise.resolve();
-
-  if (authInitialisedAndConnected) {
-    console.debug(`auth state changed, user ${user ? "true" : "false"}`);
-    if (user) {
-      setUserId(user.uid);
-      userPromise = loadUser(user);
-    } else {
-      setUserId(null);
-      DB.setSnapshot(undefined);
-    }
-  }
-
-  if (!authInitialisedAndConnected || !user) {
-    void Sentry.clearUser();
-  }
+  setUserId("local_user");
+  setUserVerified(true);
+  const userPromise = loadUser();
 
   authEvent.dispatch({
     type: "authStateChanged",
-    data: { isUserSignedIn: user !== null, loadPromise: userPromise },
+    data: { isUserSignedIn: true, loadPromise: userPromise },
   });
 }
 
