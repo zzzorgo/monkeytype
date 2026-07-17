@@ -328,6 +328,7 @@ export const LanguageGroups: Record<string, Language[]> = {
     "code_javascript",
     "code_javascript_1k",
     "code_javascript_react",
+    "code_typescript_react",
     "code_jule",
     "code_julia",
     "code_haskell",

@@ -56,6 +56,7 @@ services:
       - RATE_LIMIT_MULTIPLIER=${RATE_LIMIT_MULTIPLIER:-100000}
       - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
       - OLLAMA_TRANSLATION_MODEL=${OLLAMA_TRANSLATION_MODEL:-translategemma:4b}
+      - OLLAMA_CODE_MODEL=${OLLAMA_CODE_MODEL:-qwen2.5:7b-instruct-q6_K}
       - EMAIL_HOST=${EMAIL_HOST:-}
       - EMAIL_PORT=${EMAIL_PORT:-}
       - EMAIL_USER=${EMAIL_USER:-}

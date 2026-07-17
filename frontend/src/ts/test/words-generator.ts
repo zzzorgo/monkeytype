@@ -30,6 +30,7 @@ import { PolyglotWordset } from "./funbox/funbox-functions";
 import { LanguageObject } from "@monkeytype/schemas/languages";
 import { getCurrentQuote, isRepeated, setCurrentQuote } from "../states/test";
 import * as TestWords from "./test-words";
+import Ape from "../ape";
 
 //pin implementation
 const random = Math.random;
@@ -612,6 +613,42 @@ type GenerateWordsReturn = {
 
 let previousRandomQuote: QuoteWithTextSplit | null = null;
 
+function isGeneratedCodeLanguage(language: LanguageObject): boolean {
+  return language.name === "code_typescript_react";
+}
+
+function splitGeneratedCode(code: string): string[] {
+  return code
+    .trim()
+    .split(/\r?\n/)
+    .flatMap((line, index, lines) => {
+      const words = line.trim().split(/\s+/).filter(Boolean);
+      const isFinalLine = index === lines.length - 1;
+
+      if (words.length > 0 && !isFinalLine) {
+        const lastIndex = words.length - 1;
+        words[lastIndex] = `${words[lastIndex] as string}\n`;
+      }
+
+      return words;
+    });
+}
+
+async function getGeneratedTypescriptReactCodeWords(): Promise<string[]> {
+  const response = await Ape.generatedCode.generateTypescriptReactCode();
+
+  if (response.status !== 200) {
+    throw new WordGenError(response.body.message);
+  }
+
+  const words = splitGeneratedCode(response.body.data.code);
+  if (words.length === 0) {
+    throw new WordGenError("Code generation provider returned empty code");
+  }
+
+  return words;
+}
+
 export async function generateWords(
   language: LanguageObject,
 ): Promise<GenerateWordsReturn> {
@@ -644,6 +681,13 @@ export async function generateWords(
     wordList = CustomText.getText();
   } else if (Config.mode === "quote") {
     wordList = await getQuoteWordList(language, wordOrder);
+  } else if (
+    Config.mode !== "zen" &&
+    isGeneratedCodeLanguage(language)
+  ) {
+    if (!isRepeated()) {
+      wordList = await getGeneratedTypescriptReactCodeWords();
+    }
   } else if (Config.mode === "zen") {
     wordList = [];
   }
@@ -770,6 +814,16 @@ export async function getNextWord(
     throw new WordGenError("Current language is null");
   }
 
+  if (
+    isGeneratedCodeLanguage(currentLanguage) &&
+    currentSection.length === 0 &&
+    currentWordset.orderedIndex >= currentWordset.length
+  ) {
+    currentWordset = await withWords(
+      await getGeneratedTypescriptReactCodeWords(),
+    );
+  }
+
   //because quote test can be repeated in the middle of a test
   //we cant rely on data inside previousGetNextWordReturns
   //because it might not include the full quote
@@ -823,7 +877,7 @@ export async function getNextWord(
   if (currentSection.length === 0) {
     const funboxSection = await getFunboxSection();
 
-    if (Config.mode === "quote") {
+    if (Config.mode === "quote" || isGeneratedCodeLanguage(currentLanguage)) {
       randomWord = currentWordset.nextWord();
     } else if (Config.mode === "custom" && CustomText.getMode() === "repeat") {
       randomWord = currentWordset.nextWord();

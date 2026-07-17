@@ -1,0 +1,26 @@
+{
+  "name": "code_typescript_react",
+  "noLazyMode": true,
+  "words": [
+    "import",
+    "type",
+    "interface",
+    "export",
+    "function",
+    "const",
+    "useState",
+    "useEffect",
+    "useMemo",
+    "useCallback",
+    "ReactNode",
+    "PropsWithChildren",
+    "className",
+    "onClick",
+    "setState",
+    "return",
+    "button",
+    "section",
+    "aria-label",
+    "data-testid"
+  ]
+}

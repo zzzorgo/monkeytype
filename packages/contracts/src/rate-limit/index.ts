@@ -132,6 +132,11 @@ export const limits = {
     max: 10,
   },
 
+  generatedCode: {
+    window: "minute",
+    max: 10,
+  },
+
   // Results Routing
   resultsGet: {
     window: "hour",

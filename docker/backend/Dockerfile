@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM node:24.11.0-alpine3.22 AS builder
+FROM node:24.11.0-alpine3.22 AS dependencies
 
 WORKDIR /app
 
@@ -24,13 +24,16 @@ RUN --mount=type=cache,id=monkeytype-pnpm-store,target=/pnpm/store,sharing=locke
     pnpm config set store-dir /pnpm/store && \
     pnpm i --frozen-lockfile
 
+# Deploy production dependencies while only manifests are present. This layer is
+# reused for source-only changes.
+RUN pnpm deploy --legacy --filter backend --prod /prod/backend
+
+FROM dependencies AS builder
+
 COPY packages packages
 COPY backend backend
 
 RUN npm run build
-
-#deploy (install all non-dev dependencies in a single node_module folder)
-RUN pnpm deploy --legacy --filter backend --prod /prod/backend
 
 #---------------------------------
 
@@ -41,11 +44,16 @@ FROM node:24.11.0-alpine3.22
 ARG server_version=UNKNOWN
 
 # COPY to target
-COPY --from=builder /prod/backend/node_modules /app/backend/node_modules
-COPY --from=builder /prod/backend/dist /app/backend/dist
-COPY --from=builder /prod/backend/email-templates /app/backend/email-templates
-COPY --from=builder /prod/backend/redis-scripts /app/backend/redis-scripts
-COPY --from=builder /prod/backend/private /app/backend/private
+COPY --from=dependencies /prod/backend/node_modules /app/backend/node_modules
+COPY --from=builder /app/backend/dist /app/backend/dist
+COPY --from=builder /app/backend/email-templates /app/backend/email-templates
+COPY --from=builder /app/backend/redis-scripts /app/backend/redis-scripts
+COPY --from=builder /app/backend/private /app/backend/private
+COPY --from=builder /app/packages/challenges/dist /app/backend/node_modules/@monkeytype/challenges/dist
+COPY --from=builder /app/packages/contracts/dist /app/backend/node_modules/@monkeytype/contracts/dist
+COPY --from=builder /app/packages/funbox/dist /app/backend/node_modules/@monkeytype/funbox/dist
+COPY --from=builder /app/packages/schemas/dist /app/backend/node_modules/@monkeytype/schemas/dist
+COPY --from=builder /app/packages/util/dist /app/backend/node_modules/@monkeytype/util/dist
 
 ## to build directory
 WORKDIR /app/backend/dist
