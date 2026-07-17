@@ -126,6 +126,12 @@ export const limits = {
     max: 60,
   },
 
+  // Translation Routing
+  translationWords: {
+    window: "minute",
+    max: 10,
+  },
+
   // Results Routing
   resultsGet: {
     window: "hour",

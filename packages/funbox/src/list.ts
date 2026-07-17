@@ -458,6 +458,19 @@ const list: Record<FunboxName, FunboxMetadata> = {
     frontendFunctions: ["withWords"],
     name: "polyglot",
   },
+  translation: {
+    description: "Type each word followed by its English translation.",
+    canGetPb: false,
+    difficultyLevel: 1,
+    properties: ["noInfiniteDuration"],
+    frontendForcedConfig: {
+      mode: ["words"],
+      numbers: [false],
+      punctuation: [false],
+    },
+    frontendFunctions: ["applyConfig", "withWords"],
+    name: "translation",
+  },
   asl: {
     description: "Practice american sign language.",
     canGetPb: true,

@@ -23,7 +23,19 @@ import {
 } from "../api/types";
 import { AppRoute, AppRouter } from "@ts-rest/core";
 
-export const REQUEST_MULTIPLIER = isDevEnvironment() ? 100 : 1;
+const configuredRequestMultiplier = Number.parseInt(
+  process.env["RATE_LIMIT_MULTIPLIER"] ?? "",
+  10,
+);
+
+export const REQUEST_MULTIPLIER = Math.max(
+  1,
+  Number.isFinite(configuredRequestMultiplier)
+    ? configuredRequestMultiplier
+    : isDevEnvironment()
+      ? 100
+      : 1,
+);
 
 export const customHandler = (
   req: ExpressRequestWithContext,

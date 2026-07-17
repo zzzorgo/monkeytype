@@ -28,6 +28,7 @@ import { WordGenError } from "../../utils/word-gen-error";
 import { FunboxName, KeymapLayout, Layout } from "@monkeytype/schemas/configs";
 import { Language, LanguageObject } from "@monkeytype/schemas/languages";
 import { qs } from "../../utils/dom";
+import Ape from "../../ape";
 
 export type FunboxFunctions = {
   getWord?: (wordset?: Wordset, wordIndex?: number) => string;
@@ -171,6 +172,56 @@ export class PolyglotWordset extends Wordset {
     this.wordsWithLanguage = wordsWithLanguage;
     this.languageProperties = languageProperties;
   }
+}
+
+const translationCache = new Map<string, string>();
+
+function getTranslationSourceWords(words: string[]): string[] {
+  const pairCount = Config.words / 2;
+  const sourceWords: string[] = [];
+
+  for (let index = 0; index < pairCount; index++) {
+    sourceWords.push(Arrays.randomElementFromArray(words));
+  }
+
+  return sourceWords;
+}
+
+function normalizeTranslation(translation: string): string {
+  return translation.trim().replace(/\s+/g, "-");
+}
+
+async function getTranslations(
+  words: string[],
+  sourceLanguage?: string,
+): Promise<string[]> {
+  const missingWords = [...new Set(words)].filter(
+    (word) => !translationCache.has(`${sourceLanguage}:${word}`),
+  );
+
+  if (missingWords.length > 0) {
+    const response = await Ape.translations.translateWords({
+      body: {
+        words: missingWords,
+        sourceLanguage,
+      },
+    });
+
+    if (response.status !== 200) {
+      throw new WordGenError(response.body.message);
+    }
+
+    for (const [index, word] of missingWords.entries()) {
+      translationCache.set(
+        `${sourceLanguage}:${word}`,
+        normalizeTranslation(response.body.data.translations[index] as string),
+      );
+    }
+  }
+
+  return words.map(
+    (word) => translationCache.get(`${sourceLanguage}:${word}`) as string,
+  );
 }
 
 const list: Partial<Record<FunboxName, FunboxFunctions>> = {
@@ -732,6 +783,36 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
       );
 
       return new PolyglotWordset(wordsWithLanguage, languageProperties);
+    },
+  },
+  translation: {
+    applyConfig(): void {
+      const pairedWordCount = Math.min(Config.words + (Config.words % 2), 200);
+      if (Config.words !== pairedWordCount) {
+        setConfig("words", pairedWordCount, { nosave: true });
+        showNoticeNotification(
+          "Translation funbox uses an even word count of at most 200 to keep pairs together.",
+        );
+      }
+
+      if (!Config.language.startsWith("english")) return;
+
+      toggleFunbox("translation", true);
+      showNoticeNotification(
+        "Translation funbox requires a non-English source language.",
+      );
+    },
+    async withWords(words) {
+      const language = await JSONData.getCurrentLanguage(Config.language);
+      const sourceWords = getTranslationSourceWords(words ?? []);
+      const sourceLanguage = language.bcp47?.split("-")[0]?.toUpperCase();
+      const translations = await getTranslations(sourceWords, sourceLanguage);
+
+      return new Wordset(
+        sourceWords.map(
+          (word, index) => `${word} ${translations[index] as string}`,
+        ),
+      );
     },
   },
 };

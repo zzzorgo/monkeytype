@@ -53,6 +53,9 @@ services:
       - REDIS_URI=redis://monkeytype-redis:6379
       - FRONTEND_URL=${MONKEYTYPE_FRONTENDURL}
       - RECAPTCHA_SECRET=${RECAPTCHA_SECRET:-}
+      - RATE_LIMIT_MULTIPLIER=${RATE_LIMIT_MULTIPLIER:-100000}
+      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
+      - OLLAMA_TRANSLATION_MODEL=${OLLAMA_TRANSLATION_MODEL:-translategemma:4b}
       - EMAIL_HOST=${EMAIL_HOST:-}
       - EMAIL_PORT=${EMAIL_PORT:-}
       - EMAIL_USER=${EMAIL_USER:-}
@@ -64,6 +67,9 @@ services:
         source: ./backend-configuration.json
         target: /app/backend/dist/backend-configuration.json
         read_only: true
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
     depends_on:
       monkeytype-redis:
@@ -94,6 +100,7 @@ services:
       retries: 15
       start_period: 10s
 
+
   monkeytype-mongodb:
     container_name: monkeytype-mongodb
     image: mongo:5.0.13
@@ -109,4 +116,3 @@ services:
       timeout: 10s
       retries: 15
       start_period: 10s
-
