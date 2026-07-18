@@ -583,6 +583,11 @@ describe("result controller test", () => {
     const userCheckIfPbMock = vi.spyOn(UserDal, "checkIfPb");
     const userIncrementXpMock = vi.spyOn(UserDal, "incrementXp");
     const userUpdateTypingStatsMock = vi.spyOn(UserDal, "updateTypingStats");
+    const userRecordMistypedCharactersMock = vi.spyOn(
+      UserDal,
+      "recordMistypedCharacters",
+    );
+    const userRecordMistakeTypesMock = vi.spyOn(UserDal, "recordMistakeTypes");
     const resultAddMock = vi.spyOn(ResultDal, "addResult");
     const publicUpdateStatsMock = vi.spyOn(PublicDal, "updateStats");
 
@@ -597,6 +602,8 @@ describe("result controller test", () => {
         userCheckIfPbMock,
         userIncrementXpMock,
         userUpdateTypingStatsMock,
+        userRecordMistypedCharactersMock,
+        userRecordMistakeTypesMock,
         resultAddMock,
         publicUpdateStatsMock,
       ].forEach((it) => it.mockClear());
@@ -614,6 +621,8 @@ describe("result controller test", () => {
 
       const completedEvent = buildCompletedEvent({
         funbox: ["58008", "read_ahead_hard"],
+        mistypedCharacters: [{ original: "c", typed: "x" }],
+        mistakeSummary: [{ type: "wrong_character", count: 1 }],
       });
       //WHEN
       const { body } = await mockApp
@@ -625,6 +634,16 @@ describe("result controller test", () => {
         .expect(200);
 
       expect(body.message).toEqual("Result saved");
+      expect(userRecordMistypedCharactersMock).toHaveBeenCalledWith(
+        uid,
+        "english",
+        [{ original: "c", typed: "x" }],
+      );
+      expect(userRecordMistakeTypesMock).toHaveBeenCalledWith(
+        uid,
+        "english",
+        [{ type: "wrong_character", count: 1 }],
+      );
       expect(body.data).toEqual({
         isPb: true,
         tagPbs: [],

@@ -482,6 +482,18 @@ export async function addResult(
     completedEvent.restartCount,
     totalDurationTypedSeconds,
   );
+  await Promise.all([
+    UserDAL.recordMistypedCharacters(
+      uid,
+      completedEvent.language,
+      completedEvent.mistypedCharacters ?? [],
+    ),
+    UserDAL.recordMistakeTypes(
+      uid,
+      completedEvent.language,
+      completedEvent.mistakeSummary ?? [],
+    ),
+  ]);
   void PublicDAL.updateStats(
     completedEvent.restartCount,
     totalDurationTypedSeconds,

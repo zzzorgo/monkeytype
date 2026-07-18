@@ -36,6 +36,7 @@ import {
 import { IdSchema, StringNumberSchema } from "@monkeytype/schemas/util";
 import { LanguageSchema } from "@monkeytype/schemas/languages";
 import { CustomThemeColorsSchema } from "@monkeytype/schemas/configs";
+import { MistypedCharacterSchema } from "@monkeytype/schemas/results";
 
 export const GetUserResponseSchema = responseWithData(
   UserSchema.extend({
@@ -198,11 +199,21 @@ export const LinkDiscordResponseSchema = responseWithData(
 );
 export type LinkDiscordResponse = z.infer<typeof LinkDiscordResponseSchema>;
 
+const MistypedCharacterStatSchema = z
+  .object({ count: z.number().int().nonnegative() })
+  .merge(MistypedCharacterSchema);
+
 export const GetStatsResponseSchema = responseWithData(
-  UserSchema.pick({
-    completedTests: true,
-    startedTests: true,
-    timeTyping: true,
+  z.object({
+    completedTests: z.number().int().nonnegative().optional(),
+    startedTests: z.number().int().nonnegative().optional(),
+    timeTyping: z.number().nonnegative().optional(),
+    mistypedCharacterStats: z
+      .record(z.array(MistypedCharacterStatSchema))
+      .optional(),
+    mistakeTypeStats: z
+      .record(z.record(z.number().int().nonnegative()))
+      .optional(),
   }),
 );
 export type GetStatsResponse = z.infer<typeof GetStatsResponseSchema>;

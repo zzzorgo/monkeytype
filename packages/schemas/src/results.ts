@@ -67,6 +67,31 @@ export const CharStatsSchema = z.tuple([
 ]);
 export type CharStats = z.infer<typeof CharStatsSchema>;
 
+export const MistakeTypeSchema = z.enum([
+  "swapped_letters",
+  "extra_letter",
+  "skipped_letter",
+  "wrong_capitalization",
+  "wrong_character",
+  "wrong_word",
+  "other",
+]);
+export type MistakeType = z.infer<typeof MistakeTypeSchema>;
+
+export const MistakeSummaryItemSchema = z.object({
+  type: MistakeTypeSchema,
+  count: z.number().int().positive(),
+});
+export type MistakeSummaryItem = z.infer<typeof MistakeSummaryItemSchema>;
+
+export const MistypedCharacterSchema = z
+  .object({
+    original: z.string().min(1).max(32),
+    typed: z.string().min(1).max(32),
+  })
+  .strict();
+export type MistypedCharacter = z.infer<typeof MistypedCharacterSchema>;
+
 const ResultBaseSchema = z.object({
   wpm: WpmSchema,
   rawWpm: WpmSchema,
@@ -148,6 +173,8 @@ export const CompletedEventSchema = ResultBaseSchema.required({
     wpmConsistency: PercentageSchema,
     stopOnLetter: z.boolean(),
     incompleteTests: z.array(IncompleteTestSchema),
+    mistypedCharacters: z.array(MistypedCharacterSchema).max(100).optional(),
+    mistakeSummary: z.array(MistakeSummaryItemSchema).max(7).optional(),
   })
   .strict();
 

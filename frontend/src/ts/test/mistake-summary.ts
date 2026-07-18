@@ -5,6 +5,7 @@ import type {
   TestEventNoMs,
 } from "./events/types";
 import * as Strings from "../utils/strings";
+import type { MistypedCharacter } from "@monkeytype/schemas/results";
 
 export const mistakeTypes = [
   "swapped_letters",
@@ -13,6 +14,7 @@ export const mistakeTypes = [
   "wrong_capitalization",
   "wrong_character",
   "wrong_word",
+  "other",
 ] as const;
 
 export type MistakeType = (typeof mistakeTypes)[number];
@@ -25,6 +27,8 @@ export type MistakeSummaryItem = {
 export type MistakeOccurrence = {
   type: MistakeType;
   wordIndex: number;
+  targetWord?: string;
+  inputWord?: string;
   inputIndices: number[];
   targetIndices: number[];
   typedCharacters: Record<number, string>;
@@ -42,6 +46,7 @@ const mistakeLabels: Record<MistakeType, string> = {
   wrong_capitalization: "Wrong capitalization",
   wrong_character: "Wrong character",
   wrong_word: "Wrong word",
+  other: "Other",
 };
 
 export function getMistakeLabel(type: MistakeType): string {
@@ -221,7 +226,21 @@ function alignMistakes(
     }
   }
 
-  const mistakes = reversedMistakes.reverse();
+  const mistakes = reversedMistakes.reverse().reduce<
+    Omit<MistakeOccurrence, "wordIndex">[]
+  >((groupedMistakes, mistake) => {
+    const previous = groupedMistakes.at(-1);
+    if (
+      previous?.type === "skipped_letter" &&
+      mistake.type === "skipped_letter"
+    ) {
+      previous.targetIndices.push(...mistake.targetIndices);
+      return groupedMistakes;
+    }
+
+    groupedMistakes.push(mistake);
+    return groupedMistakes;
+  }, []);
   if (
     matches === 0 &&
     mistakes.length >= 3 &&
@@ -250,6 +269,7 @@ function classifyMistakes(
   input: string,
   target: string,
   includeTrailingSkips: boolean,
+  nextTarget?: string,
 ): Omit<MistakeOccurrence, "wordIndex">[] {
   const attempt = Strings.splitIntoCharacters(
     withoutCommitCharacter(input, target),
@@ -258,8 +278,49 @@ function classifyMistakes(
     withoutCommitCharacter(target, target),
   );
 
+  if (
+    target.endsWith(" ") &&
+    nextTarget !== undefined &&
+    attempt.length > expected.length &&
+    expected.every((character, index) => attempt[index] === character)
+  ) {
+    const nextExpected = Strings.splitIntoCharacters(
+      withoutCommitCharacter(nextTarget, nextTarget),
+    );
+    const extraCharacters = attempt.slice(expected.length);
+    const firstMismatch = extraCharacters.findIndex(
+      (character, index) => character !== nextExpected[index],
+    );
+    const matchingCharacters =
+      firstMismatch === -1 ? extraCharacters.length : firstMismatch;
+
+    if (matchingCharacters >= 3) {
+      return [
+        {
+          type: "skipped_letter",
+          inputIndices: [],
+          targetIndices: [expected.length],
+          typedCharacters: {},
+        },
+      ];
+    }
+  }
+
   if (attempt.join("") === expected.join("")) return [];
-  return alignMistakes(attempt, expected, includeTrailingSkips).mistakes;
+  const alignment = alignMistakes(attempt, expected, includeTrailingSkips);
+  const hasSubstitution = alignment.mistakes.some(
+    (mistake) =>
+      mistake.type === "wrong_character" ||
+      mistake.type === "wrong_capitalization",
+  );
+
+  if (!hasSubstitution) return alignment.mistakes;
+
+  return alignment.mistakes.filter(
+    (mistake) =>
+      mistake.type !== "skipped_letter" ||
+      !mistake.targetIndices.every((index) => index >= attempt.length),
+  );
 }
 
 export function getMistakeAnalysis(eventLog: EventLog): MistakeAnalysis {
@@ -270,6 +331,7 @@ export function getMistakeAnalysis(eventLog: EventLog): MistakeAnalysis {
     wrong_capitalization: 0,
     wrong_character: 0,
     wrong_word: 0,
+    other: 0,
   };
   const occurrences: MistakeOccurrence[] = [];
   const eventsByWord = new Map<number, TestEventNoMs[]>();
@@ -284,23 +346,88 @@ export function getMistakeAnalysis(eventLog: EventLog): MistakeAnalysis {
   for (const [wordIndex, events] of eventsByWord) {
     const target = eventLog.context.targetWords[wordIndex];
     if (target === undefined) continue;
+    const nextTarget = eventLog.context.targetWords[wordIndex + 1];
 
     let mistakenInput: string | undefined;
     let firstIncorrectEvent: TestEventNoMs | undefined;
+    const recordedMistakes = new Map<
+      string,
+      Omit<MistakeOccurrence, "wordIndex">
+    >();
+
+    const addMistake = (
+      mistake: Omit<MistakeOccurrence, "wordIndex">,
+      input: string,
+    ): void => {
+      const key = JSON.stringify([
+        mistake.type,
+        mistake.targetIndices,
+        mistake.typedCharacters,
+      ]);
+      if (recordedMistakes.has(key)) return;
+
+      recordedMistakes.set(key, mistake);
+      counts[mistake.type]++;
+      occurrences.push({
+        ...mistake,
+        wordIndex,
+        targetWord: withoutCommitCharacter(target, target),
+        inputWord: withoutCommitCharacter(input, target),
+      });
+    };
+
+    const clearCorrectedMistakes = (input: string): void => {
+      const inputCharacters = Strings.splitIntoCharacters(
+        withoutCommitCharacter(input, target),
+      );
+
+      for (const [key, mistake] of recordedMistakes) {
+        const isStillPresent = Object.entries(mistake.typedCharacters).every(
+          ([index, typed]) => inputCharacters[Number(index)] === typed,
+        );
+        if (!isStillPresent) recordedMistakes.delete(key);
+      }
+    };
+
+    const addOtherMistake = (input: string): void => {
+      counts.other++;
+      occurrences.push({
+        type: "other",
+        wordIndex,
+        targetWord: withoutCommitCharacter(target, target),
+        inputWord: withoutCommitCharacter(input, target),
+        inputIndices: [],
+        targetIndices: [],
+        typedCharacters: {},
+      });
+    };
+
+    const recordMistakes = (
+      input: string,
+      includeTrailingSkips: boolean,
+    ): void => {
+      const mistakes = classifyMistakes(
+        input,
+        target,
+        includeTrailingSkips,
+        nextTarget,
+      );
+      if (mistakes.length === 0) {
+        addOtherMistake(input);
+        return;
+      }
+
+      for (const mistake of mistakes) {
+        addMistake(mistake, input);
+      }
+    };
 
     const addMistakes = (
       input: string,
       includeTrailingSkips: boolean,
     ): void => {
       if (firstIncorrectEvent === undefined) return;
-      for (const mistake of classifyMistakes(
-        input,
-        target,
-        includeTrailingSkips,
-      )) {
-        counts[mistake.type]++;
-        occurrences.push({ ...mistake, wordIndex });
-      }
+      recordMistakes(input, includeTrailingSkips);
       mistakenInput = undefined;
       firstIncorrectEvent = undefined;
     };
@@ -309,48 +436,118 @@ export function getMistakeAnalysis(eventLog: EventLog): MistakeAnalysis {
       if (event.type !== "input") continue;
 
       if (isInsertEvent(event)) {
-        if (!event.data.correct) {
-          if (event.data.inputStopped) {
-            for (const mistake of classifyMistakes(
-              event.data.inputValue + event.data.data,
-              target,
-              false,
-            )) {
-              counts[mistake.type]++;
-              occurrences.push({ ...mistake, wordIndex });
-            }
-            continue;
-          }
-          mistakenInput = event.data.inputValue;
-          firstIncorrectEvent ??= event;
-        } else if (mistakenInput !== undefined) {
-          mistakenInput = event.data.inputValue;
+        const replacedMistakenInput =
+          mistakenInput !== undefined &&
+          !event.data.inputValue.startsWith(mistakenInput);
+        if (replacedMistakenInput) {
+          addMistakes(mistakenInput, false);
         }
 
-        if (event.data.commitsWord) {
-          if (mistakenInput !== undefined) {
-            addMistakes(mistakenInput, true);
-          } else if (event.data.inputValue !== target) {
-            firstIncorrectEvent = event;
-            addMistakes(event.data.inputValue, true);
+        if (!event.data.correct && event.data.inputStopped) {
+          recordMistakes(
+            event.data.inputValue + event.data.data,
+            false,
+          );
+        } else {
+          if (!event.data.correct) {
+            if (!target.startsWith(event.data.inputValue)) {
+              mistakenInput = event.data.inputValue;
+              firstIncorrectEvent ??= event;
+            }
+          } else if (mistakenInput !== undefined) {
+            mistakenInput = event.data.inputValue;
+          }
+
+          if (event.data.commitsWord) {
+            if (mistakenInput !== undefined) {
+              addMistakes(mistakenInput, true);
+            } else if (event.data.inputValue !== target) {
+              firstIncorrectEvent = event;
+              addMistakes(event.data.inputValue, true);
+            }
           }
         }
+        clearCorrectedMistakes(event.data.inputValue);
       } else if (mistakenInput !== undefined) {
         addMistakes(mistakenInput, false);
+        clearCorrectedMistakes(event.data.inputValue);
+      } else {
+        clearCorrectedMistakes(event.data.inputValue);
       }
     }
 
     if (mistakenInput !== undefined) addMistakes(mistakenInput, true);
   }
 
+  const wordLevelOccurrences = new Map<string, MistakeOccurrence>();
+  for (const [index, occurrence] of occurrences.entries()) {
+    if (
+      occurrence.type !== "extra_letter" &&
+      occurrence.type !== "skipped_letter"
+    ) {
+      wordLevelOccurrences.set(
+        `occurrence:${index}`,
+        occurrence,
+      );
+      continue;
+    }
+
+    const key = `${occurrence.wordIndex}:${occurrence.type}`;
+    const existing = wordLevelOccurrences.get(key);
+    if (existing === undefined) {
+      wordLevelOccurrences.set(key, occurrence);
+      continue;
+    }
+
+    existing.inputIndices.push(...occurrence.inputIndices);
+    existing.targetIndices.push(...occurrence.targetIndices);
+    Object.assign(existing.typedCharacters, occurrence.typedCharacters);
+  }
+
+  const mergedOccurrences = [...wordLevelOccurrences.values()];
+  const mergedCounts = { ...counts };
+  mergedCounts.extra_letter = mergedOccurrences.filter(
+    (occurrence) => occurrence.type === "extra_letter",
+  ).length;
+  mergedCounts.skipped_letter = mergedOccurrences.filter(
+    (occurrence) => occurrence.type === "skipped_letter",
+  ).length;
+
   return {
     summary: mistakeTypes
-      .map((type) => ({ type, count: counts[type] }))
+      .map((type) => ({ type, count: mergedCounts[type] }))
       .filter(({ count }) => count > 0),
-    occurrences,
+    occurrences: mergedOccurrences,
   };
 }
 
 export function getMistakeSummary(eventLog: EventLog): MistakeSummaryItem[] {
   return getMistakeAnalysis(eventLog).summary;
+}
+
+export function getMistypedCharacters(
+  eventLog: EventLog,
+): MistypedCharacter[] {
+  return getMistakeAnalysis(eventLog).occurrences.flatMap((occurrence) => {
+    if (
+      occurrence.type !== "wrong_character" &&
+      occurrence.type !== "wrong_word"
+    ) {
+      return [];
+    }
+
+    const target = eventLog.context.targetWords[occurrence.wordIndex];
+    if (target === undefined) return [];
+    const targetCharacters = Strings.splitIntoCharacters(
+      withoutCommitCharacter(target, target),
+    );
+
+    return occurrence.targetIndices.flatMap((targetIndex) => {
+      const original = targetCharacters[targetIndex];
+      const typed = occurrence.typedCharacters[targetIndex];
+      return original !== undefined && typed !== undefined
+        ? [{ original, typed }]
+        : [];
+    });
+  });
 }

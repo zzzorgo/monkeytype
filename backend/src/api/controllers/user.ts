@@ -874,7 +874,38 @@ export async function getPersonalBests(
 export async function getStats(req: MonkeyRequest): Promise<GetStatsResponse> {
   const { uid } = req.ctx.decodedToken;
 
-  const data = (await UserDAL.getStats(uid)) ?? null;
+  const { mistypedCharacterStats, mistakeTypeStats, ...stats } =
+    await UserDAL.getStats(uid);
+  const decodedMistypedCharacterStats = Object.fromEntries(
+    Object.entries(mistypedCharacterStats ?? {}).map(
+      ([language, characters]) => [
+        language,
+        Object.entries(characters).flatMap(([key, count]) => {
+          try {
+            const parsed: unknown = JSON.parse(
+              Buffer.from(key, "base64url").toString(),
+            );
+            if (!Array.isArray(parsed)) return [];
+            const [original, typed] = parsed;
+            return typeof original === "string" && typeof typed === "string"
+              ? [{ original, typed, count }]
+              : [];
+          } catch {
+            return [];
+          }
+        }),
+      ],
+    ),
+  );
+  const data = {
+    ...stats,
+    ...(Object.keys(decodedMistypedCharacterStats).length > 0
+      ? { mistypedCharacterStats: decodedMistypedCharacterStats }
+      : {}),
+    ...(Object.keys(mistakeTypeStats ?? {}).length > 0
+      ? { mistakeTypeStats }
+      : {}),
+  };
   return new MonkeyResponse("Personal stats retrieved", data);
 }
 

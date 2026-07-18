@@ -123,6 +123,8 @@ import { isDevEnvironment } from "../utils/env";
 import { EventLog } from "./events/types";
 import { resetModifierState } from "../states/modifiers";
 import { nthElementFromArray } from "../utils/arrays";
+import { getMistakeSummary, getMistypedCharacters } from "./mistake-summary";
+import { invalidateUserStats } from "../queries/user";
 
 let failReason = "";
 
@@ -823,6 +825,8 @@ function buildCompletedEvent(
     keySpacing: keypressSpacing,
     keyDuration: getKeypressDurations(eventLog),
     keyOverlap: getKeypressOverlap(eventLog),
+    mistypedCharacters: getMistypedCharacters(eventLog),
+    mistakeSummary: getMistakeSummary(eventLog),
   };
 
   if (completedEvent.mode !== "custom") delete completedEvent.customText;
@@ -1165,6 +1169,7 @@ async function saveResult(
   }
 
   const data = response.body.data;
+  void invalidateUserStats();
   qs("#result .stats .tags .editTagsButton")?.setAttribute(
     "data-result-id",
     data.insertedId,

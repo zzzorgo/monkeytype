@@ -34,7 +34,11 @@ import {
   PersonalBests,
 } from "@monkeytype/schemas/shared";
 import { addImportantLog } from "./logs";
-import { Result as ResultType } from "@monkeytype/schemas/results";
+import {
+  MistakeSummaryItem,
+  MistypedCharacter,
+  Result as ResultType,
+} from "@monkeytype/schemas/results";
 import { Configuration } from "@monkeytype/schemas/configuration";
 import { isToday, isYesterday } from "@monkeytype/util/date-and-time";
 import GeorgeQueue from "../queues/george-queue";
@@ -67,6 +71,8 @@ export type DBUser = Omit<
   testActivity?: CountByYearAndDay;
   suspicious?: boolean;
   note?: string;
+  mistypedCharacterStats?: Record<string, Record<string, number>>;
+  mistakeTypeStats?: Record<string, Record<string, number>>;
 };
 
 const SECONDS_PER_HOUR = 3600;
@@ -160,6 +166,8 @@ export async function resetUser(uid: string): Promise<void> {
         completedTests: 0,
         startedTests: 0,
         timeTyping: 0,
+        mistypedCharacterStats: {},
+        mistakeTypeStats: {},
         lbMemory: {},
         bananas: 0,
         profileDetails: {
@@ -637,6 +645,54 @@ export async function updateTypingStats(
   );
 }
 
+export async function recordMistypedCharacters(
+  uid: string,
+  language: string,
+  characters: MistypedCharacter[],
+): Promise<void> {
+  const counts = new Map<string, number>();
+  for (const { original, typed } of characters) {
+    const key = Buffer.from(JSON.stringify([original, typed])).toString(
+      "base64url",
+    );
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  if (counts.size === 0) return;
+
+  await getUsersCollection().updateOne(
+    { uid },
+    {
+      $inc: Object.fromEntries(
+        [...counts].map(([key, count]) => [
+          `mistypedCharacterStats.${language}.${key}`,
+          count,
+        ]),
+      ),
+    },
+  );
+}
+
+export async function recordMistakeTypes(
+  uid: string,
+  language: string,
+  mistakes: MistakeSummaryItem[],
+): Promise<void> {
+  if (mistakes.length === 0) return;
+
+  await getUsersCollection().updateOne(
+    { uid },
+    {
+      $inc: Object.fromEntries(
+        mistakes.map(({ type, count }) => [
+          `mistakeTypeStats.${language}.${type}`,
+          count,
+        ]),
+      ),
+    },
+  );
+}
+
 export async function linkDiscord(
   uid: string,
   discordId: string,
@@ -817,11 +873,22 @@ export async function getPersonalBests(
 
 export async function getStats(
   uid: string,
-): Promise<Pick<DBUser, "startedTests" | "completedTests" | "timeTyping">> {
+): Promise<
+  Pick<
+    DBUser,
+    | "startedTests"
+    | "completedTests"
+    | "timeTyping"
+    | "mistypedCharacterStats"
+    | "mistakeTypeStats"
+  >
+> {
   const user = await getPartialUser(uid, "get stats", [
     "startedTests",
     "completedTests",
     "timeTyping",
+    "mistypedCharacterStats",
+    "mistakeTypeStats",
   ]);
 
   return user;

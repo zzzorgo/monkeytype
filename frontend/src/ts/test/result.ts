@@ -117,17 +117,37 @@ function updateMistakeSummary(): void {
   summaryBody?.empty();
   if (summary.length === 0) {
     summaryBody?.appendHtml(
-      '<tr><td colspan="2">No mistakes recorded</td></tr>',
+      '<tr><td colspan="3">No mistakes recorded</td></tr>',
     );
   } else {
     for (const { type, count } of summary) {
       const row = document.createElement("tr");
       row.className = "mistakeSummaryRow";
-      row.innerHTML = `<td>${getMistakeLabel(type)}</td><td>${count}</td>`;
+      const occurrences = mistakeOccurrences.filter(
+        (occurrence) => occurrence.type === type,
+      );
+      const diffs = [
+        ...new Set(
+          occurrences.map((occurrence) => {
+            const target = occurrence.targetWord ?? "";
+            const input = occurrence.inputWord ?? "";
+            return `${target} → ${input === "" ? "∅" : input}`;
+          }),
+        ),
+      ];
+      for (const value of [
+        getMistakeLabel(type),
+        `${count}`,
+        diffs.join(", "),
+      ]) {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.append(cell);
+      }
       row.addEventListener("mouseenter", () => {
         highlightedMistakeType = type;
         void TestUI.highlightResultMistakes(
-          mistakeOccurrences.filter((occurrence) => occurrence.type === type),
+          occurrences,
         ).then(() => {
           if (highlightedMistakeType !== type) {
             TestUI.clearResultMistakeHighlights();

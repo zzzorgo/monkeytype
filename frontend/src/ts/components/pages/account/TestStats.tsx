@@ -1,4 +1,5 @@
-import { Accessor, JSXElement, Show } from "solid-js";
+import { Accessor, createMemo, For, JSXElement, Show } from "solid-js";
+import { useQuery } from "@tanstack/solid-query";
 
 import {
   ResultsQueryState,
@@ -7,8 +8,10 @@ import {
 } from "../../../collections/results";
 import { getFormatting } from "../../../states/core";
 import { secondsToString } from "../../../utils/date-and-time";
+import { getUserStatsQueryOptions } from "../../../queries/user";
 import AsyncContent from "../../common/AsyncContent";
 import { Fa } from "../../common/Fa";
+import { H3 } from "../../common/Headers";
 
 export function TestStats(props: {
   queryState: Accessor<ResultsQueryState | undefined>;
@@ -154,6 +157,7 @@ export function TestStats(props: {
                     formatter={formatPercentage}
                   />
                 </div>
+                <MistypedCharacters queryState={props.queryState} />
               </>
             );
           }}
@@ -161,6 +165,135 @@ export function TestStats(props: {
       )}
     </AsyncContent>
   );
+}
+
+function MistypedCharacters(props: {
+  queryState: Accessor<ResultsQueryState | undefined>;
+}): JSXElement {
+  const statsQuery = useQuery(() => getUserStatsQueryOptions());
+  const selectedLanguages = createMemo(
+    () => props.queryState()?.language ?? [],
+  );
+  const mistakes = createMemo(() => {
+    const stats = statsQuery.data?.mistypedCharacterStats ?? {};
+    const languages = selectedLanguages();
+    const selectedStats =
+      languages.length === 0
+        ? Object.values(stats).flat()
+        : languages.flatMap((language) => stats[language] ?? []);
+    const total = selectedStats.reduce((sum, stat) => sum + stat.count, 0);
+    const totalsByCharacter = new Map<
+      string,
+      { original: string; typed: string; count: number }
+    >();
+    for (const stat of selectedStats) {
+      const key = JSON.stringify([stat.original, stat.typed]);
+      const existing = totalsByCharacter.get(key);
+      if (existing !== undefined) {
+        existing.count += stat.count;
+      } else {
+        totalsByCharacter.set(key, { ...stat });
+      }
+    }
+
+    return {
+      total,
+      entries: [...totalsByCharacter.values()]
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20),
+    };
+  });
+  const mistakeTypes = createMemo(() => {
+    const stats = statsQuery.data?.mistakeTypeStats ?? {};
+    const languages = selectedLanguages();
+    const selectedStats =
+      languages.length === 0
+        ? Object.values(stats)
+        : languages.map((language) => stats[language] ?? {});
+    const totals = new Map<string, number>();
+
+    for (const languageStats of selectedStats) {
+      for (const [type, count] of Object.entries(languageStats)) {
+        totals.set(type, (totals.get(type) ?? 0) + count);
+      }
+    }
+
+    const entries = [...totals].map(([type, count]) => ({ type, count }));
+    return {
+      total: entries.reduce((sum, entry) => sum + entry.count, 0),
+      entries: entries.sort((a, b) => b.count - a.count),
+    };
+  });
+
+  return (
+    <AsyncContent queries={{ statsQuery }}>
+      {() => (
+        <>
+          <Show when={mistakes().entries.length > 0}>
+            <div class="mt-8">
+              <H3 fa={{ icon: "fa-keyboard" }} text="mistyped characters" />
+              <div class="grid grid-cols-[1fr_1fr_auto_auto] gap-x-4 gap-y-1">
+                <div class="text-sub">original</div>
+                <div class="text-sub">mistyped as</div>
+                <div class="text-right text-sub">amount</div>
+                <div class="text-right text-sub">of all typos</div>
+                <For each={mistakes().entries}>
+                  {(mistake) => (
+                    <>
+                      <div>{mistake.original}</div>
+                      <div>{mistake.typed}</div>
+                      <div class="text-right">{mistake.count}</div>
+                      <div class="text-right">
+                        {((mistake.count / mistakes().total) * 100).toFixed(1)}%
+                      </div>
+                    </>
+                  )}
+                </For>
+              </div>
+            </div>
+          </Show>
+          <Show when={mistakeTypes().entries.length > 0}>
+            <div class="mt-8">
+              <H3 fa={{ icon: "fa-list-ol" }} text="mistake types" />
+              <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1">
+                <div class="text-sub">type</div>
+                <div class="text-right text-sub">amount</div>
+                <div class="text-right text-sub">of all mistakes</div>
+                <For each={mistakeTypes().entries}>
+                  {(mistake) => (
+                    <>
+                      <div>{getMistakeTypeLabel(mistake.type)}</div>
+                      <div class="text-right">{mistake.count}</div>
+                      <div class="text-right">
+                        {(
+                          (mistake.count / mistakeTypes().total) *
+                          100
+                        ).toFixed(1)}
+                        %
+                      </div>
+                    </>
+                  )}
+                </For>
+              </div>
+            </div>
+          </Show>
+        </>
+      )}
+    </AsyncContent>
+  );
+}
+
+function getMistakeTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    swapped_letters: "swapped character pairs",
+    extra_letter: "extra letters",
+    skipped_letter: "skipped letters",
+    wrong_capitalization: "wrong capitalization",
+    wrong_character: "wrong characters",
+    wrong_word: "wrong words",
+    other: "other",
+  };
+  return labels[type] ?? type.replaceAll("_", " ");
 }
 
 function Stat(options: {

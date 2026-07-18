@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getMistakeAnalysis,
+  getMistypedCharacters,
   getMistakeSummary,
 } from "../../src/ts/test/mistake-summary";
 import type {
@@ -44,6 +45,46 @@ function eventLog(targetWords: string[], events: TestEventNoMs[]): EventLog {
 }
 
 describe("mistake summary", () => {
+  it("returns only single wrong-character substitutions", () => {
+    const mistakes = getMistypedCharacters(
+      eventLog(
+        ["cat "],
+        [
+          input("x", { data: "x", correct: false, charIndex: 0 }),
+          input("", { inputType: "deleteContentBackward" }),
+          input("c", { data: "c", charIndex: 0 }),
+          input("cx", { data: "x", correct: false, charIndex: 1 }),
+          input("c", { inputType: "deleteContentBackward" }),
+        ],
+      ),
+    );
+
+    expect(mistakes).toEqual([
+      { original: "c", typed: "x" },
+      { original: "a", typed: "x" },
+    ]);
+  });
+
+  it("includes substitutions collapsed into a corrected wrong word", () => {
+    const mistakes = getMistypedCharacters(
+      eventLog(
+        ["cat "],
+        [
+          input("x", { data: "x", correct: false, charIndex: 0 }),
+          input("xy", { data: "y", correct: false, charIndex: 1 }),
+          input("xyz", { data: "z", correct: false, charIndex: 2 }),
+          input("xy", { inputType: "deleteContentBackward" }),
+        ],
+      ),
+    );
+
+    expect(mistakes).toEqual([
+      { original: "c", typed: "x" },
+      { original: "a", typed: "y" },
+      { original: "t", typed: "z" },
+    ]);
+  });
+
   it("includes corrected substitutions", () => {
     const summary = getMistakeSummary(
       eventLog(
@@ -56,6 +97,84 @@ describe("mistake summary", () => {
     );
 
     expect(summary).toEqual([{ type: "wrong_character", count: 1 }]);
+  });
+
+  it("keeps mistake indexes stable after the typo is fixed", () => {
+    const analysis = getMistakeAnalysis(
+      eventLog(
+        ["abcd "],
+        [
+          input("a", { data: "a", charIndex: 0 }),
+          input("ax", { data: "x", correct: false, charIndex: 1 }),
+          input("axc", { data: "c", charIndex: 2 }),
+          input("ax", { inputType: "deleteContentBackward" }),
+          input("a", { inputType: "deleteContentBackward" }),
+          input("ab", { data: "b", charIndex: 1 }),
+          input("abc", { data: "c", charIndex: 2 }),
+          input("abcd", { data: "d", charIndex: 3 }),
+          input("abcd ", {
+            data: " ",
+            commitsWord: true,
+          }),
+        ],
+      ),
+    );
+
+    expect(analysis.occurrences).toEqual([
+      {
+        type: "wrong_character",
+        wordIndex: 0,
+        targetWord: "abcd",
+        inputWord: "axc",
+        inputIndices: [1],
+        targetIndices: [1],
+        typedCharacters: { 1: "x" },
+      },
+    ]);
+  });
+
+  it("includes substitutions corrected by replacing a selection", () => {
+    const log = eventLog(
+      ["cat "],
+      [
+        input("x", { data: "x", correct: false, charIndex: 0 }),
+        // Replacement input is compared against the old input snapshot, so it
+        // is logged as incorrect even though the resulting value is correct.
+        input("c", { data: "c", correct: false, charIndex: 1 }),
+        input("ca", { data: "a", correct: true, charIndex: 1 }),
+        input("cat", { data: "t", correct: true, charIndex: 2 }),
+        input("cat ", {
+          data: " ",
+          correct: true,
+          commitsWord: true,
+        }),
+      ],
+    );
+    const analysis = getMistakeAnalysis(log);
+
+    expect(analysis.summary).toEqual([{ type: "wrong_character", count: 1 }]);
+    expect(getMistypedCharacters(log)).toEqual([{ original: "c", typed: "x" }]);
+  });
+
+  it("does not recount unresolved mistakes after a partial correction", () => {
+    const mistakes = getMistypedCharacters(
+      eventLog(
+        ["cat "],
+        [
+          input("x", { data: "x", correct: false, charIndex: 0 }),
+          input("xy", { data: "y", correct: false, charIndex: 1 }),
+          input("xa", { data: "a", correct: false, charIndex: 2 }),
+          input("xaz", { data: "z", correct: false, charIndex: 2 }),
+          input("ca", { data: "c", correct: false, charIndex: 3 }),
+        ],
+      ),
+    );
+
+    expect(mistakes).toEqual([
+      { original: "c", typed: "x" },
+      { original: "a", typed: "y" },
+      { original: "t", typed: "z" },
+    ]);
   });
 
   it("recognizes corrected adjacent letter swaps", () => {
@@ -98,6 +217,8 @@ describe("mistake summary", () => {
       {
         type: "swapped_letters",
         wordIndex: 0,
+        targetWord: "abcdef",
+        inputWord: "badcef",
         inputIndices: [0, 1],
         targetIndices: [0, 1],
         typedCharacters: { 0: "b", 1: "a" },
@@ -105,6 +226,8 @@ describe("mistake summary", () => {
       {
         type: "swapped_letters",
         wordIndex: 0,
+        targetWord: "abcdef",
+        inputWord: "badcef",
         inputIndices: [2, 3],
         targetIndices: [2, 3],
         typedCharacters: { 2: "d", 3: "c" },
@@ -163,6 +286,88 @@ describe("mistake summary", () => {
     ]);
   });
 
+  it("groups consecutive skipped letters into one mistake", () => {
+    const analysis = getMistakeAnalysis(
+      eventLog(
+        ["typingtest "],
+        [input("t", { data: "t", correct: false, charIndex: 0 })],
+      ),
+    );
+
+    expect(analysis.summary).toEqual([{ type: "skipped_letter", count: 1 }]);
+    expect(analysis.occurrences[0]).toMatchObject({
+      type: "skipped_letter",
+      targetIndices: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+    });
+  });
+
+  it("counts extra letters once per word", () => {
+    const summary = getMistakeSummary(
+      eventLog(
+        ["abcde "],
+        [
+          input("abcdex", { data: "x", correct: false, charIndex: 5 }),
+          input("abcde", { inputType: "deleteContentBackward" }),
+          input("abcdex", { data: "x", correct: false, charIndex: 5 }),
+          input("abcde", { inputType: "deleteContentBackward" }),
+        ],
+      ),
+    );
+
+    expect(summary).toEqual([{ type: "extra_letter", count: 1 }]);
+  });
+
+  it("classifies a missed space before the next word as a skipped letter", () => {
+    const summary = getMistakeSummary(
+      eventLog(
+        ["the ", "quick "],
+        [
+          input("thequick ", {
+            data: " ",
+            correct: false,
+            commitsWord: true,
+          }),
+        ],
+      ),
+    );
+
+    expect(summary).toEqual([{ type: "skipped_letter", count: 1 }]);
+  });
+
+  it("prioritizes a wrong character over trailing omissions", () => {
+    const summary = getMistakeSummary(
+      eventLog(
+        ["combination "],
+        [
+          input("con ", {
+            data: " ",
+            correct: false,
+            commitsWord: true,
+          }),
+        ],
+      ),
+    );
+
+    expect(summary).toEqual([{ type: "wrong_character", count: 1 }]);
+  });
+
+  it("prioritizes capitalization over trailing omissions", () => {
+    const summary = getMistakeSummary(
+      eventLog(
+        ["Bigger "],
+        [
+          input("b ", {
+            data: " ",
+            correct: false,
+            commitsWord: true,
+          }),
+        ],
+      ),
+    );
+
+    expect(summary).toEqual([{ type: "wrong_capitalization", count: 1 }]);
+  });
+
   it("counts extra letters rejected by stop on error", () => {
     const summary = getMistakeSummary(
       eventLog(
@@ -179,6 +384,24 @@ describe("mistake summary", () => {
     );
 
     expect(summary).toEqual([{ type: "extra_letter", count: 1 }]);
+  });
+
+  it("uses other when an incorrect input has no text mismatch", () => {
+    const summary = getMistakeSummary(
+      eventLog(
+        ["cat "],
+        [
+          input("", {
+            data: "c",
+            correct: false,
+            charIndex: 0,
+            inputStopped: true,
+          }),
+        ],
+      ),
+    );
+
+    expect(summary).toEqual([{ type: "other", count: 1 }]);
   });
 
   it("recognizes corrected capitalization separately from a wrong character", () => {
