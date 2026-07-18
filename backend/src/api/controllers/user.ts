@@ -874,11 +874,17 @@ export async function getPersonalBests(
 export async function getStats(req: MonkeyRequest): Promise<GetStatsResponse> {
   const { uid } = req.ctx.decodedToken;
 
-  const { mistypedCharacterStats, mistakeTypeStats, ...stats } =
-    await UserDAL.getStats(uid);
-  const decodedMistypedCharacterStats = Object.fromEntries(
-    Object.entries(mistypedCharacterStats ?? {}).map(
-      ([language, characters]) => [
+  const {
+    mistypedCharacterStats,
+    transposedCharacterStats,
+    mistakeTypeStats,
+    ...stats
+  } = await UserDAL.getStats(uid);
+  const decodeCharacterStats = (
+    characterStats: Record<string, Record<string, number>>,
+  ): Record<string, { original: string; typed: string; count: number }[]> =>
+    Object.fromEntries(
+      Object.entries(characterStats).map(([language, characters]) => [
         language,
         Object.entries(characters).flatMap(([key, count]) => {
           try {
@@ -894,13 +900,21 @@ export async function getStats(req: MonkeyRequest): Promise<GetStatsResponse> {
             return [];
           }
         }),
-      ],
-    ),
+      ]),
+    );
+  const decodedMistypedCharacterStats = decodeCharacterStats(
+    mistypedCharacterStats ?? {},
+  );
+  const decodedTransposedCharacterStats = decodeCharacterStats(
+    transposedCharacterStats ?? {},
   );
   const data = {
     ...stats,
     ...(Object.keys(decodedMistypedCharacterStats).length > 0
       ? { mistypedCharacterStats: decodedMistypedCharacterStats }
+      : {}),
+    ...(Object.keys(decodedTransposedCharacterStats).length > 0
+      ? { transposedCharacterStats: decodedTransposedCharacterStats }
       : {}),
     ...(Object.keys(mistakeTypeStats ?? {}).length > 0
       ? { mistakeTypeStats }

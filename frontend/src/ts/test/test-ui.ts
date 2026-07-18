@@ -829,7 +829,7 @@ export async function updateWordLetters({
           } else {
             let charString = currentLetter;
 
-            if (!Config.blindMode) {
+            if (Config.showTypedLetters && !Config.blindMode) {
               const lastBlock = typedHintIndices[typedHintIndices.length - 1];
               if (lastBlock && lastBlock[lastBlock.length - 1] === i - 1) {
                 lastBlock.push(i);
@@ -2165,7 +2165,7 @@ configEvent.subscribe(({ key, newValue }) => {
   if ((key === "theme" || key === "burstHeatmap") && TestState.resultVisible) {
     void applyBurstHeatmap();
   }
-  if (key === "highlightMode") {
+  if (["highlightMode", "showTypedLetters"].includes(key)) {
     if (getActivePage() === "test") {
       void updateWordLetters({
         input: getCurrentInput(),

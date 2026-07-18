@@ -36,7 +36,10 @@ import {
 import { IdSchema, StringNumberSchema } from "@monkeytype/schemas/util";
 import { LanguageSchema } from "@monkeytype/schemas/languages";
 import { CustomThemeColorsSchema } from "@monkeytype/schemas/configs";
-import { MistypedCharacterSchema } from "@monkeytype/schemas/results";
+import {
+  MistypedCharacterSchema,
+  TransposedCharacterPairSchema,
+} from "@monkeytype/schemas/results";
 
 export const GetUserResponseSchema = responseWithData(
   UserSchema.extend({
@@ -203,6 +206,10 @@ const MistypedCharacterStatSchema = z
   .object({ count: z.number().int().nonnegative() })
   .merge(MistypedCharacterSchema);
 
+const TransposedCharacterStatSchema = z
+  .object({ count: z.number().int().nonnegative() })
+  .merge(TransposedCharacterPairSchema);
+
 export const GetStatsResponseSchema = responseWithData(
   z.object({
     completedTests: z.number().int().nonnegative().optional(),
@@ -210,6 +217,9 @@ export const GetStatsResponseSchema = responseWithData(
     timeTyping: z.number().nonnegative().optional(),
     mistypedCharacterStats: z
       .record(z.array(MistypedCharacterStatSchema))
+      .optional(),
+    transposedCharacterStats: z
+      .record(z.array(TransposedCharacterStatSchema))
       .optional(),
     mistakeTypeStats: z
       .record(z.record(z.number().int().nonnegative()))

@@ -587,6 +587,10 @@ describe("result controller test", () => {
       UserDal,
       "recordMistypedCharacters",
     );
+    const userRecordTransposedCharacterPairsMock = vi.spyOn(
+      UserDal,
+      "recordTransposedCharacterPairs",
+    );
     const userRecordMistakeTypesMock = vi.spyOn(UserDal, "recordMistakeTypes");
     const resultAddMock = vi.spyOn(ResultDal, "addResult");
     const publicUpdateStatsMock = vi.spyOn(PublicDal, "updateStats");
@@ -603,6 +607,7 @@ describe("result controller test", () => {
         userIncrementXpMock,
         userUpdateTypingStatsMock,
         userRecordMistypedCharactersMock,
+        userRecordTransposedCharacterPairsMock,
         userRecordMistakeTypesMock,
         resultAddMock,
         publicUpdateStatsMock,
@@ -622,6 +627,7 @@ describe("result controller test", () => {
       const completedEvent = buildCompletedEvent({
         funbox: ["58008", "read_ahead_hard"],
         mistypedCharacters: [{ original: "c", typed: "x" }],
+        transposedCharacterPairs: [{ original: "ca", typed: "ac" }],
         mistakeSummary: [{ type: "wrong_character", count: 1 }],
       });
       //WHEN
@@ -638,6 +644,11 @@ describe("result controller test", () => {
         uid,
         "english",
         [{ original: "c", typed: "x" }],
+      );
+      expect(userRecordTransposedCharacterPairsMock).toHaveBeenCalledWith(
+        uid,
+        "english",
+        [{ original: "ca", typed: "ac" }],
       );
       expect(userRecordMistakeTypesMock).toHaveBeenCalledWith(
         uid,
@@ -721,6 +732,7 @@ describe("result controller test", () => {
         .expect(200);
 
       expect(userRecordMistypedCharactersMock).not.toHaveBeenCalled();
+      expect(userRecordTransposedCharacterPairsMock).not.toHaveBeenCalled();
       expect(userRecordMistakeTypesMock).not.toHaveBeenCalled();
     });
     it("should fail if result saving is disabled", async () => {

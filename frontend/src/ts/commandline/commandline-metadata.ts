@@ -326,6 +326,11 @@ export const commandlineConfigMetadata: CommandlineConfigMetadataObject = {
       options: "fromSchema",
     },
   },
+  showTypedLetters: {
+    subgroup: {
+      options: "fromSchema",
+    },
+  },
   compositionDisplay: {
     subgroup: {
       options: "fromSchema",

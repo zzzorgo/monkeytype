@@ -4,6 +4,7 @@ import {
   getMistakeAnalysis,
   getMistypedCharacters,
   getMistakeSummary,
+  getTransposedCharacterPairs,
 } from "../../src/ts/test/mistake-summary";
 import type {
   EventLog,
@@ -45,6 +46,21 @@ function eventLog(targetWords: string[], events: TestEventNoMs[]): EventLog {
 }
 
 describe("mistake summary", () => {
+  it("returns adjacent transposed character pairs", () => {
+    const pairs = getTransposedCharacterPairs(
+      eventLog(
+        ["cat "],
+        [
+          input("ac", { data: "c", correct: false, charIndex: 1 }),
+          input("act", { data: "t", correct: false, charIndex: 2 }),
+          input("act ", { data: " ", commitsWord: true }),
+        ],
+      ),
+    );
+
+    expect(pairs).toEqual([{ original: "ca", typed: "ac" }]);
+  });
+
   it("returns only single wrong-character substitutions", () => {
     const mistakes = getMistypedCharacters(
       eventLog(

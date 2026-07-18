@@ -42,6 +42,7 @@ const obj: Config = {
   funbox: [],
   confidenceMode: "off",
   indicateTypos: "off",
+  showTypedLetters: true,
   compositionDisplay: "replace",
   timerStyle: "mini",
   liveSpeedStyle: "off",

@@ -115,6 +115,7 @@ export const commands: CommandsSubgroup = {
       "confidenceMode",
       "quickEnd",
       "indicateTypos",
+      "showTypedLetters",
       "compositionDisplay",
       "hideExtraLetters",
       "lazyMode",

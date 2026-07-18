@@ -123,7 +123,11 @@ import { isDevEnvironment } from "../utils/env";
 import { EventLog } from "./events/types";
 import { resetModifierState } from "../states/modifiers";
 import { nthElementFromArray } from "../utils/arrays";
-import { getMistakeSummary, getMistypedCharacters } from "./mistake-summary";
+import {
+  getMistakeSummary,
+  getMistypedCharacters,
+  getTransposedCharacterPairs,
+} from "./mistake-summary";
 import { invalidateUserStats } from "../queries/user";
 
 let failReason = "";
@@ -826,6 +830,7 @@ function buildCompletedEvent(
     keyDuration: getKeypressDurations(eventLog),
     keyOverlap: getKeypressOverlap(eventLog),
     mistypedCharacters: getMistypedCharacters(eventLog),
+    transposedCharacterPairs: getTransposedCharacterPairs(eventLog),
     mistakeSummary: getMistakeSummary(eventLog),
   };
 

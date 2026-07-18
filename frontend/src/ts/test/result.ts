@@ -117,7 +117,7 @@ function updateMistakeSummary(): void {
   summaryBody?.empty();
   if (summary.length === 0) {
     summaryBody?.appendHtml(
-      '<tr><td colspan="3">No mistakes recorded</td></tr>',
+      '<tr><td colspan="3">no mistakes recorded</td></tr>',
     );
   } else {
     for (const { type, count } of summary) {

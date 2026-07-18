@@ -432,6 +432,7 @@ export const ConfigSchema = z
     confidenceMode: ConfidenceModeSchema,
     quickEnd: z.boolean(),
     indicateTypos: IndicateTyposSchema,
+    showTypedLetters: z.boolean(),
     compositionDisplay: CompositionDisplaySchema,
     hideExtraLetters: z.boolean(),
     lazyMode: z.boolean(),

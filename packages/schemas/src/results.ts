@@ -92,6 +92,16 @@ export const MistypedCharacterSchema = z
   .strict();
 export type MistypedCharacter = z.infer<typeof MistypedCharacterSchema>;
 
+export const TransposedCharacterPairSchema = z
+  .object({
+    original: z.string().min(1).max(32),
+    typed: z.string().min(1).max(32),
+  })
+  .strict();
+export type TransposedCharacterPair = z.infer<
+  typeof TransposedCharacterPairSchema
+>;
+
 const ResultBaseSchema = z.object({
   wpm: WpmSchema,
   rawWpm: WpmSchema,
@@ -174,6 +184,10 @@ export const CompletedEventSchema = ResultBaseSchema.required({
     stopOnLetter: z.boolean(),
     incompleteTests: z.array(IncompleteTestSchema),
     mistypedCharacters: z.array(MistypedCharacterSchema).max(100).optional(),
+    transposedCharacterPairs: z
+      .array(TransposedCharacterPairSchema)
+      .max(100)
+      .optional(),
     mistakeSummary: z.array(MistakeSummaryItemSchema).max(7).optional(),
   })
   .strict();

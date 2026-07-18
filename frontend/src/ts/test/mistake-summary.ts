@@ -5,7 +5,10 @@ import type {
   TestEventNoMs,
 } from "./events/types";
 import * as Strings from "../utils/strings";
-import type { MistypedCharacter } from "@monkeytype/schemas/results";
+import type {
+  MistypedCharacter,
+  TransposedCharacterPair,
+} from "@monkeytype/schemas/results";
 
 export const mistakeTypes = [
   "swapped_letters",
@@ -40,13 +43,13 @@ export type MistakeAnalysis = {
 };
 
 const mistakeLabels: Record<MistakeType, string> = {
-  swapped_letters: "Swapped letters",
-  extra_letter: "Extra letter",
-  skipped_letter: "Skipped letter",
-  wrong_capitalization: "Wrong capitalization",
-  wrong_character: "Wrong character",
-  wrong_word: "Wrong word",
-  other: "Other",
+  swapped_letters: "transposed characters",
+  extra_letter: "extra characters",
+  skipped_letter: "skipped characters",
+  wrong_capitalization: "wrong capitalization",
+  wrong_character: "wrong characters",
+  wrong_word: "wrong word",
+  other: "other",
 };
 
 export function getMistakeLabel(type: MistakeType): string {
@@ -544,5 +547,27 @@ export function getMistypedCharacters(
         ? [{ original, typed }]
         : [];
     });
+  });
+}
+
+export function getTransposedCharacterPairs(
+  eventLog: EventLog,
+): TransposedCharacterPair[] {
+  return getMistakeAnalysis(eventLog).occurrences.flatMap((occurrence) => {
+    if (occurrence.type !== "swapped_letters") return [];
+
+    const target = eventLog.context.targetWords[occurrence.wordIndex];
+    if (target === undefined) return [];
+    const targetCharacters = Strings.splitIntoCharacters(
+      withoutCommitCharacter(target, target),
+    );
+    const original = occurrence.targetIndices
+      .map((index) => targetCharacters[index])
+      .join("");
+    const typed = occurrence.targetIndices
+      .map((index) => occurrence.typedCharacters[index])
+      .join("");
+
+    return original.length > 0 && typed.length > 0 ? [{ original, typed }] : [];
   });
 }

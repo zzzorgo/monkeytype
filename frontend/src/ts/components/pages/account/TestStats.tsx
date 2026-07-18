@@ -12,6 +12,14 @@ import { getUserStatsQueryOptions } from "../../../queries/user";
 import AsyncContent from "../../common/AsyncContent";
 import { Fa } from "../../common/Fa";
 import { H3 } from "../../common/Headers";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../ui/table/Table";
 
 export function TestStats(props: {
   queryState: Accessor<ResultsQueryState | undefined>;
@@ -224,6 +232,35 @@ function MistypedCharacters(props: {
       entries: entries.sort((a, b) => b.count - a.count),
     };
   });
+  const transpositions = createMemo(() => {
+    const stats = statsQuery.data?.transposedCharacterStats ?? {};
+    const languages = selectedLanguages();
+    const selectedStats =
+      languages.length === 0
+        ? Object.values(stats).flat()
+        : languages.flatMap((language) => stats[language] ?? []);
+    const total = selectedStats.reduce((sum, stat) => sum + stat.count, 0);
+    const totalsByPair = new Map<
+      string,
+      { original: string; typed: string; count: number }
+    >();
+    for (const stat of selectedStats) {
+      const key = JSON.stringify([stat.original, stat.typed]);
+      const existing = totalsByPair.get(key);
+      if (existing !== undefined) {
+        existing.count += stat.count;
+      } else {
+        totalsByPair.set(key, { ...stat });
+      }
+    }
+
+    return {
+      total,
+      entries: [...totalsByPair.values()]
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20),
+    };
+  });
 
   return (
     <AsyncContent queries={{ statsQuery }}>
@@ -232,49 +269,99 @@ function MistypedCharacters(props: {
           <Show when={mistakes().entries.length > 0}>
             <div class="mt-8">
               <H3 fa={{ icon: "fa-keyboard" }} text="mistyped characters" />
-              <div class="grid grid-cols-[1fr_1fr_auto_auto] gap-x-4 gap-y-1">
-                <div class="text-sub">original</div>
-                <div class="text-sub">mistyped as</div>
-                <div class="text-right text-sub">amount</div>
-                <div class="text-right text-sub">of all typos</div>
-                <For each={mistakes().entries}>
-                  {(mistake) => (
-                    <>
-                      <div>{mistake.original}</div>
-                      <div>{mistake.typed}</div>
-                      <div class="text-right">{mistake.count}</div>
-                      <div class="text-right">
-                        {((mistake.count / mistakes().total) * 100).toFixed(1)}%
-                      </div>
-                    </>
-                  )}
-                </For>
-              </div>
+              <Table class="table-auto text-xs md:text-sm lg:text-base">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>expected</TableHead>
+                    <TableHead>typed</TableHead>
+                    <TableHead class="text-right">count</TableHead>
+                    <TableHead class="text-right">share</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <For each={mistakes().entries}>
+                    {(mistake) => (
+                      <TableRow>
+                        <TableCell>{mistake.original}</TableCell>
+                        <TableCell>{mistake.typed}</TableCell>
+                        <TableCell class="text-right">{mistake.count}</TableCell>
+                        <TableCell class="text-right">
+                          {((mistake.count / mistakes().total) * 100).toFixed(1)}%
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </For>
+                </TableBody>
+              </Table>
+            </div>
+          </Show>
+          <Show when={transpositions().entries.length > 0}>
+            <div class="mt-8">
+              <H3
+                fa={{ icon: "fa-exchange-alt" }}
+                text="transposed characters"
+              />
+              <Table class="table-auto text-xs md:text-sm lg:text-base">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>expected</TableHead>
+                    <TableHead>typed</TableHead>
+                    <TableHead class="text-right">count</TableHead>
+                    <TableHead class="text-right">share</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <For each={transpositions().entries}>
+                    {(transposition) => (
+                      <TableRow>
+                        <TableCell>{transposition.original}</TableCell>
+                        <TableCell>{transposition.typed}</TableCell>
+                        <TableCell class="text-right">
+                          {transposition.count}
+                        </TableCell>
+                        <TableCell class="text-right">
+                          {(
+                            (transposition.count / transpositions().total) *
+                            100
+                          ).toFixed(1)}
+                          %
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </For>
+                </TableBody>
+              </Table>
             </div>
           </Show>
           <Show when={mistakeTypes().entries.length > 0}>
             <div class="mt-8">
               <H3 fa={{ icon: "fa-list-ol" }} text="mistake types" />
-              <div class="grid grid-cols-[1fr_auto_auto] gap-x-4 gap-y-1">
-                <div class="text-sub">type</div>
-                <div class="text-right text-sub">amount</div>
-                <div class="text-right text-sub">of all mistakes</div>
-                <For each={mistakeTypes().entries}>
-                  {(mistake) => (
-                    <>
-                      <div>{getMistakeTypeLabel(mistake.type)}</div>
-                      <div class="text-right">{mistake.count}</div>
-                      <div class="text-right">
-                        {(
-                          (mistake.count / mistakeTypes().total) *
-                          100
-                        ).toFixed(1)}
-                        %
-                      </div>
-                    </>
-                  )}
-                </For>
-              </div>
+              <Table class="table-auto text-xs md:text-sm lg:text-base">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>mistake</TableHead>
+                    <TableHead class="text-right">count</TableHead>
+                    <TableHead class="text-right">share</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <For each={mistakeTypes().entries}>
+                    {(mistake) => (
+                      <TableRow>
+                        <TableCell>{getMistakeTypeLabel(mistake.type)}</TableCell>
+                        <TableCell class="text-right">{mistake.count}</TableCell>
+                        <TableCell class="text-right">
+                          {(
+                            (mistake.count / mistakeTypes().total) *
+                            100
+                          ).toFixed(1)}
+                          %
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </For>
+                </TableBody>
+              </Table>
             </div>
           </Show>
         </>
@@ -285,12 +372,12 @@ function MistypedCharacters(props: {
 
 function getMistakeTypeLabel(type: string): string {
   const labels: Record<string, string> = {
-    swapped_letters: "swapped character pairs",
-    extra_letter: "extra letters",
-    skipped_letter: "skipped letters",
+    swapped_letters: "transposed characters",
+    extra_letter: "extra characters",
+    skipped_letter: "skipped characters",
     wrong_capitalization: "wrong capitalization",
     wrong_character: "wrong characters",
-    wrong_word: "wrong words",
+    wrong_word: "wrong word",
     other: "other",
   };
   return labels[type] ?? type.replaceAll("_", " ");

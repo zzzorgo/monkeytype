@@ -550,6 +550,14 @@ export const configMetadata: ConfigMetadataObject = {
     description:
       'Shows typos that you\'ve made. "Below" shows what you typed below the letters, "replace" will replace the letters with the ones you typed and "both" will do the same as replace and below, but it will show the correct letters below your mistakes.',
   },
+  showTypedLetters: {
+    key: "showTypedLetters",
+    fa: { icon: "fa-keyboard" },
+    displayString: "show typed letters",
+    changeRequiresRestart: false,
+    group: "input",
+    description: "Shows incorrectly typed letters above the test text.",
+  },
   compositionDisplay: {
     key: "compositionDisplay",
     fa: { icon: "fa-language" },

@@ -2772,6 +2772,28 @@ describe("user controller test", () => {
 
       expect(getStatsMock).toHaveBeenCalledWith(uid);
     });
+    it("should decode transposed character stats", async () => {
+      const pairKey = Buffer.from(JSON.stringify(["ca", "ac"])).toString(
+        "base64url",
+      );
+      getStatsMock.mockResolvedValue({
+        transposedCharacterStats: { english: { [pairKey]: 2 } },
+      });
+
+      const { body } = await mockApp
+        .get("/users/stats")
+        .set("Authorization", `Bearer ${uid}`)
+        .expect(200);
+
+      expect(body).toEqual({
+        message: "Personal stats retrieved",
+        data: {
+          transposedCharacterStats: {
+            english: [{ original: "ca", typed: "ac", count: 2 }],
+          },
+        },
+      });
+    });
     it("should get stats with ape key", async () => {
       //GIVEN
       await acceptApeKeys(true);
