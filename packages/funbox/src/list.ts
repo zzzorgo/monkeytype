@@ -314,11 +314,15 @@ const list: Record<FunboxName, FunboxMetadata> = {
     name: "wikipedia",
   },
   weakspot: {
-    description: "Focus on slow and mistyped letters.",
+    description: "Practice your most common character confusions.",
     canGetPb: false,
     difficultyLevel: 0,
-    properties: ["changesWordsFrequency"],
-    frontendFunctions: ["getWord"],
+    properties: ["ignoresLanguage", "noInfiniteDuration"],
+    frontendForcedConfig: {
+      punctuation: [false],
+      numbers: [false],
+    },
+    frontendFunctions: ["pullSection"],
     name: "weakspot",
   },
   pseudolang: {

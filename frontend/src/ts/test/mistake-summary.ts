@@ -179,28 +179,6 @@ function alignMistakes(
 
     if (
       row > 0 &&
-      column > 0 &&
-      distance === (distances[row - 1]?.[column - 1] as number) + 1
-    ) {
-      reversedMistakes.push(
-        {
-          type:
-            attemptCharacter?.toLowerCase() ===
-            expectedCharacter?.toLowerCase()
-              ? "wrong_capitalization"
-              : "wrong_character",
-          inputIndices: [row - 1],
-          targetIndices: [column - 1],
-          typedCharacters: { [column - 1]: attemptCharacter as string },
-        },
-      );
-      row--;
-      column--;
-      continue;
-    }
-
-    if (
-      row > 0 &&
       distance === (distances[row - 1]?.[column] as number) + 1
     ) {
       reversedMistakes.push({
@@ -213,7 +191,10 @@ function alignMistakes(
       continue;
     }
 
-    if (column > 0) {
+    if (
+      column > 0 &&
+      distance === (distances[row]?.[column - 1] as number) + 1
+    ) {
       if (includeTrailingSkips || row > 0) {
         reversedMistakes.push({
           type: "skipped_letter",
@@ -223,7 +204,20 @@ function alignMistakes(
         });
       }
       column--;
+      continue;
     }
+
+    reversedMistakes.push({
+      type:
+        attemptCharacter?.toLowerCase() === expectedCharacter?.toLowerCase()
+          ? "wrong_capitalization"
+          : "wrong_character",
+      inputIndices: [row - 1],
+      targetIndices: [column - 1],
+      typedCharacters: { [column - 1]: attemptCharacter as string },
+    });
+    row--;
+    column--;
   }
 
   const mistakes = reversedMistakes.reverse().reduce<
@@ -308,13 +302,14 @@ function classifyMistakes(
 
   if (attempt.join("") === expected.join("")) return [];
   const alignment = alignMistakes(attempt, expected, includeTrailingSkips);
-  const hasSubstitution = alignment.mistakes.some(
+  const hasPrimaryMistake = alignment.mistakes.some(
     (mistake) =>
       mistake.type === "wrong_character" ||
-      mistake.type === "wrong_capitalization",
+      mistake.type === "wrong_capitalization" ||
+      mistake.type === "swapped_letters",
   );
 
-  if (!hasSubstitution) return alignment.mistakes;
+  if (!hasPrimaryMistake) return alignment.mistakes;
 
   return alignment.mistakes.filter(
     (mistake) =>

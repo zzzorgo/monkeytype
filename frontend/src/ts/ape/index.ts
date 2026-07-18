@@ -8,6 +8,7 @@ const BASE_URL = envConfig.backendUrl;
 const tsRestClient = buildClient(contract, BASE_URL, 10_000);
 const translationClient = buildClient(contract, BASE_URL, 60_000);
 const generatedCodeClient = buildClient(contract, BASE_URL, 60_000);
+const weakspotClient = buildClient(contract, BASE_URL, 120_000);
 const devClient = buildClient(devContract, BASE_URL, 240_000);
 
 // API Endpoints
@@ -15,6 +16,7 @@ const Ape = {
   ...tsRestClient,
   translations: translationClient.translations,
   generatedCode: generatedCodeClient.generatedCode,
+  weakspot: weakspotClient.weakspot,
   dev: devClient,
 };
 

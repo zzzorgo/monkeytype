@@ -706,6 +706,23 @@ describe("result controller test", () => {
         15.1 + 2 - 5, //duration + incompleteTestSeconds-afk
       );
     });
+
+    it("should not record mistake statistics for weakspot tests", async () => {
+      const completedEvent = buildCompletedEvent({
+        funbox: ["weakspot"],
+        mistypedCharacters: [{ original: ",", typed: "." }],
+        mistakeSummary: [{ type: "wrong_character", count: 1 }],
+      });
+
+      await mockApp
+        .post("/results")
+        .set("Authorization", `Bearer ${uid}`)
+        .send({ result: completedEvent })
+        .expect(200);
+
+      expect(userRecordMistypedCharactersMock).not.toHaveBeenCalled();
+      expect(userRecordMistakeTypesMock).not.toHaveBeenCalled();
+    });
     it("should fail if result saving is disabled", async () => {
       //GIVEN
       await enableResultsSaving(false);

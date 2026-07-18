@@ -21,7 +21,6 @@ import * as MemoryTimer from "./memory-funbox-timer";
 import { getPoem } from "../poetry";
 import * as JSONData from "../../utils/json-data";
 import { getSection } from "../wikipedia";
-import * as WeakSpot from "../weak-spot";
 import * as IPAddresses from "../../utils/ip-addresses";
 import * as TestState from "../test-state";
 import { WordGenError } from "../../utils/word-gen-error";
@@ -29,6 +28,7 @@ import { FunboxName, KeymapLayout, Layout } from "@monkeytype/schemas/configs";
 import { Language, LanguageObject } from "@monkeytype/schemas/languages";
 import { qs } from "../../utils/dom";
 import Ape from "../../ape";
+import { getTopCharacterConfusions } from "../weakspot-practice";
 
 export type FunboxFunctions = {
   getWord?: (wordset?: Wordset, wordIndex?: number) => string;
@@ -571,9 +571,31 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
     },
   },
   weakspot: {
-    getWord(wordset?: Wordset): string {
-      if (wordset !== undefined) return WeakSpot.getWord(wordset);
-      else return "";
+    async pullSection(): Promise<JSONData.Section | false> {
+      const stats = await Ape.users.getStats();
+      if (stats.status !== 200) {
+        throw new WordGenError(stats.body.message);
+      }
+
+      const confusions = getTopCharacterConfusions(stats.body.data);
+      if (confusions.length === 0) {
+        throw new WordGenError("No single-character mistypes recorded yet.");
+      }
+
+      const practice = await Ape.weakspot.generatePractice({
+        body: { confusions },
+      });
+      if (practice.status !== 200) {
+        throw new WordGenError(practice.body.message);
+      }
+
+      const words = practice.body.data.code
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      return words.length === 0
+        ? false
+        : new JSONData.Section("Weakspot practice", "", words);
     },
   },
   pseudolang: {

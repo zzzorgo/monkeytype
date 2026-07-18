@@ -18,7 +18,8 @@ export type OpenApiTag =
   | "webhooks"
   | "connections"
   | "translations"
-  | "generated-code";
+  | "generated-code"
+  | "weakspot";
 
 export type PermissionId =
   | "quoteMod"

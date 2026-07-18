@@ -192,6 +192,74 @@ describe("mistake summary", () => {
     expect(summary).toEqual([{ type: "swapped_letters", count: 1 }]);
   });
 
+  it("prioritizes a swap over trailing omissions", () => {
+    const summary = getMistakeSummary(
+      eventLog(
+        ["Dance "],
+        [
+          input("Dacn ", {
+            data: " ",
+            correct: false,
+            commitsWord: true,
+          }),
+        ],
+      ),
+    );
+
+    expect(summary).toEqual([{ type: "swapped_letters", count: 1 }]);
+  });
+
+  it("recognizes a swap before multiple trailing omissions", () => {
+    const summary = getMistakeSummary(
+      eventLog(
+        ["audit "],
+        [
+          input("adu ", {
+            data: " ",
+            correct: false,
+            commitsWord: true,
+          }),
+        ],
+      ),
+    );
+
+    expect(summary).toEqual([{ type: "swapped_letters", count: 1 }]);
+  });
+
+  it("recognizes a swap before a long trailing omission", () => {
+    const summary = getMistakeSummary(
+      eventLog(
+        ["environment "],
+        [
+          input("evn ", {
+            data: " ",
+            correct: false,
+            commitsWord: true,
+          }),
+        ],
+      ),
+    );
+
+    expect(summary).toEqual([{ type: "swapped_letters", count: 1 }]);
+  });
+
+  it("recognizes capitalization with trailing omissions", () => {
+    const summary = getMistakeSummary(
+      eventLog(
+        ["Portland "],
+        [
+          input("p ", {
+            data: " ",
+            correct: false,
+            commitsWord: true,
+          }),
+        ],
+      ),
+    );
+
+    expect(summary).toEqual([{ type: "wrong_capitalization", count: 1 }]);
+  });
+
   it("counts multiple swaps in the same mistake block", () => {
     const analysis = getMistakeAnalysis(
       eventLog(
