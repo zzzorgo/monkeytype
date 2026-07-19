@@ -489,6 +489,11 @@ export async function addResult(
         completedEvent.language,
         completedEvent.mistypedCharacters ?? [],
       ),
+      UserDAL.recordMistypedWords(
+        uid,
+        completedEvent.language,
+        completedEvent.mistypedWords ?? [],
+      ),
       UserDAL.recordTransposedCharacterPairs(
         uid,
         completedEvent.language,

@@ -37,6 +37,7 @@ import { addImportantLog } from "./logs";
 import {
   MistakeSummaryItem,
   MistypedCharacter,
+  MistypedWord,
   Result as ResultType,
   TransposedCharacterPair,
 } from "@monkeytype/schemas/results";
@@ -73,6 +74,7 @@ export type DBUser = Omit<
   suspicious?: boolean;
   note?: string;
   mistypedCharacterStats?: Record<string, Record<string, number>>;
+  mistypedWordStats?: Record<string, Record<string, number>>;
   transposedCharacterStats?: Record<string, Record<string, number>>;
   mistakeTypeStats?: Record<string, Record<string, number>>;
 };
@@ -169,6 +171,7 @@ export async function resetUser(uid: string): Promise<void> {
         startedTests: 0,
         timeTyping: 0,
         mistypedCharacterStats: {},
+        mistypedWordStats: {},
         transposedCharacterStats: {},
         mistakeTypeStats: {},
         lbMemory: {},
@@ -676,6 +679,35 @@ export async function recordMistypedCharacters(
   );
 }
 
+export async function recordMistypedWords(
+  uid: string,
+  language: string,
+  words: MistypedWord[],
+): Promise<void> {
+  if (words.length === 0) return;
+
+  const keys = new Set(
+    words
+      .map((word) => word.replace(/\p{P}/gu, ""))
+      .filter((word) => word.length > 0)
+      .map((word) => Buffer.from(word).toString("base64url")),
+  );
+
+  if (keys.size === 0) return;
+
+  await getUsersCollection().updateOne(
+    { uid },
+    {
+      $inc: Object.fromEntries(
+        [...keys].map((key) => [
+          `mistypedWordStats.${language}.${key}`,
+          1,
+        ]),
+      ),
+    },
+  );
+}
+
 export async function recordTransposedCharacterPairs(
   uid: string,
   language: string,
@@ -911,6 +943,7 @@ export async function getStats(
     | "completedTests"
     | "timeTyping"
     | "mistypedCharacterStats"
+    | "mistypedWordStats"
     | "transposedCharacterStats"
     | "mistakeTypeStats"
   >
@@ -920,6 +953,7 @@ export async function getStats(
     "completedTests",
     "timeTyping",
     "mistypedCharacterStats",
+    "mistypedWordStats",
     "transposedCharacterStats",
     "mistakeTypeStats",
   ]);

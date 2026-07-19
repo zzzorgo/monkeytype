@@ -126,6 +126,7 @@ import { nthElementFromArray } from "../utils/arrays";
 import {
   getMistakeSummary,
   getMistypedCharacters,
+  getMistypedWords,
   getTransposedCharacterPairs,
 } from "./mistake-summary";
 import { invalidateUserStats } from "../queries/user";
@@ -831,6 +832,7 @@ function buildCompletedEvent(
     keyOverlap: getKeypressOverlap(eventLog),
     mistypedCharacters: getMistypedCharacters(eventLog),
     transposedCharacterPairs: getTransposedCharacterPairs(eventLog),
+    mistypedWords: getMistypedWords(eventLog),
     mistakeSummary: getMistakeSummary(eventLog),
   };
 

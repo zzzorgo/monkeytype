@@ -519,6 +519,17 @@ export function getMistakeAnalysis(eventLog: EventLog): MistakeAnalysis {
   };
 }
 
+export function getMistypedWords(eventLog: EventLog): string[] {
+  return [
+    ...new Set(
+      getMistakeAnalysis(eventLog).occurrences.flatMap(({ targetWord }) => {
+        const word = targetWord?.replace(/\p{P}/gu, "") ?? "";
+        return word.length > 0 && word.length <= 40 ? [word] : [];
+      }),
+    ),
+  ].slice(0, 100);
+}
+
 export function getMistakeSummary(eventLog: EventLog): MistakeSummaryItem[] {
   return getMistakeAnalysis(eventLog).summary;
 }

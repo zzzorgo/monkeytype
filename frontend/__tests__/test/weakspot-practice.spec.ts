@@ -1,25 +1,28 @@
 import { describe, expect, it } from "vitest";
 import type { GetStatsResponse } from "@monkeytype/contracts/users";
-import { getTopCharacterConfusions } from "../../src/ts/test/weakspot-practice";
+import { getTopMistypedWords } from "../../src/ts/test/weakspot-practice";
 
-describe("getTopCharacterConfusions", () => {
-  it("aggregates single-character confusions, including punctuation and digits", () => {
+describe("getTopMistypedWords", () => {
+  it("returns the most common words for the selected language", () => {
     const stats = {
-      mistypedCharacterStats: {
+      mistypedWordStats: {
         english: [
-          { original: ",", typed: ".", count: 3 },
-          { original: "1", typed: "2", count: 4 },
-          { original: ",", typed: ".", count: 2 },
-          { original: "ab", typed: "c", count: 10 },
+          { word: "cat", count: 3 },
+          { word: "dog", count: 4 },
+          { word: "bird", count: 2 },
         ],
-        french: [{ original: ";", typed: ":", count: 1 }],
+        french: [{ word: "chat", count: 5 }],
       },
     } satisfies GetStatsResponse["data"];
 
-    expect(getTopCharacterConfusions(stats)).toEqual([
-      { original: ",", typed: ".", count: 5 },
-      { original: "1", typed: "2", count: 4 },
-      { original: ";", typed: ":", count: 1 },
+    expect(getTopMistypedWords(stats, "english")).toEqual([
+      { word: "dog", count: 4 },
+      { word: "cat", count: 3 },
+      { word: "bird", count: 2 },
+    ]);
+
+    expect(getTopMistypedWords(stats, "french")).toEqual([
+      { word: "chat", count: 5 },
     ]);
   });
 });

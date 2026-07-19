@@ -102,6 +102,9 @@ export type TransposedCharacterPair = z.infer<
   typeof TransposedCharacterPairSchema
 >;
 
+export const MistypedWordSchema = z.string().min(1).max(40);
+export type MistypedWord = z.infer<typeof MistypedWordSchema>;
+
 const ResultBaseSchema = z.object({
   wpm: WpmSchema,
   rawWpm: WpmSchema,
@@ -188,6 +191,7 @@ export const CompletedEventSchema = ResultBaseSchema.required({
       .array(TransposedCharacterPairSchema)
       .max(100)
       .optional(),
+    mistypedWords: z.array(MistypedWordSchema).max(100).optional(),
     mistakeSummary: z.array(MistakeSummaryItemSchema).max(7).optional(),
   })
   .strict();

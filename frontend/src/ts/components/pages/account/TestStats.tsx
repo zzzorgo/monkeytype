@@ -211,6 +211,30 @@ function MistypedCharacters(props: {
         .slice(0, 20),
     };
   });
+  const mistypedWords = createMemo(() => {
+    const stats = statsQuery.data?.mistypedWordStats ?? {};
+    const languages = selectedLanguages();
+    const selectedStats =
+      languages.length === 0
+        ? Object.values(stats).flat()
+        : languages.flatMap((language) => stats[language] ?? []);
+    const total = selectedStats.reduce((sum, stat) => sum + stat.count, 0);
+    const totalsByWord = new Map<string, number>();
+    for (const stat of selectedStats) {
+      totalsByWord.set(
+        stat.word,
+        (totalsByWord.get(stat.word) ?? 0) + stat.count,
+      );
+    }
+
+    return {
+      total,
+      entries: [...totalsByWord]
+        .map(([word, count]) => ({ word, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20),
+    };
+  });
   const mistakeTypes = createMemo(() => {
     const stats = statsQuery.data?.mistakeTypeStats ?? {};
     const languages = selectedLanguages();
@@ -266,6 +290,37 @@ function MistypedCharacters(props: {
     <AsyncContent queries={{ statsQuery }}>
       {() => (
         <>
+          <Show when={mistypedWords().entries.length > 0}>
+            <div class="mt-8">
+              <H3 fa={{ icon: "fa-font" }} text="mistyped words" />
+              <Table class="table-auto text-xs md:text-sm lg:text-base">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>word</TableHead>
+                    <TableHead class="text-right">count</TableHead>
+                    <TableHead class="text-right">share</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <For each={mistypedWords().entries}>
+                    {(mistake) => (
+                      <TableRow>
+                        <TableCell>{mistake.word}</TableCell>
+                        <TableCell class="text-right">{mistake.count}</TableCell>
+                        <TableCell class="text-right">
+                          {(
+                            (mistake.count / mistypedWords().total) *
+                            100
+                          ).toFixed(1)}
+                          %
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </For>
+                </TableBody>
+              </Table>
+            </div>
+          </Show>
           <Show when={mistakes().entries.length > 0}>
             <div class="mt-8">
               <H3 fa={{ icon: "fa-keyboard" }} text="mistyped characters" />

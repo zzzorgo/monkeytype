@@ -28,7 +28,7 @@ import { FunboxName, KeymapLayout, Layout } from "@monkeytype/schemas/configs";
 import { Language, LanguageObject } from "@monkeytype/schemas/languages";
 import { qs } from "../../utils/dom";
 import Ape from "../../ape";
-import { getTopCharacterConfusions } from "../weakspot-practice";
+import { getTopMistypedWords } from "../weakspot-practice";
 
 export type FunboxFunctions = {
   getWord?: (wordset?: Wordset, wordIndex?: number) => string;
@@ -577,25 +577,22 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
         throw new WordGenError(stats.body.message);
       }
 
-      const confusions = getTopCharacterConfusions(stats.body.data);
-      if (confusions.length === 0) {
-        throw new WordGenError("No single-character mistypes recorded yet.");
+      const language =
+        Config.mode === "quote"
+          ? Strings.removeLanguageSize(Config.language)
+          : Config.language;
+      const words = getTopMistypedWords(stats.body.data, language);
+      if (words.length === 0) {
+        throw new WordGenError(
+          "No mistyped words recorded for this language yet.",
+        );
       }
 
-      const practice = await Ape.weakspot.generatePractice({
-        body: { confusions },
-      });
-      if (practice.status !== 200) {
-        throw new WordGenError(practice.body.message);
-      }
-
-      const words = practice.body.data.code
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean);
-      return words.length === 0
-        ? false
-        : new JSONData.Section("Weakspot practice", "", words);
+      return new JSONData.Section(
+        "Weakspot practice",
+        "",
+        words.map(({ word }) => word),
+      );
     },
   },
   pseudolang: {

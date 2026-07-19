@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   getMistakeAnalysis,
   getMistypedCharacters,
+  getMistypedWords,
   getMistakeSummary,
   getTransposedCharacterPairs,
 } from "../../src/ts/test/mistake-summary";
@@ -46,6 +47,20 @@ function eventLog(targetWords: string[], events: TestEventNoMs[]): EventLog {
 }
 
 describe("mistake summary", () => {
+  it("returns each mistyped target word once", () => {
+    expect(
+      getMistypedWords(
+        eventLog(
+          ["cat! ", "dog? "],
+          [
+            input("x", { data: "x", correct: false }),
+            input("y", { data: "y", correct: false, wordIndex: 1 }),
+          ],
+        ),
+      ),
+    ).toEqual(["cat", "dog"]);
+  });
+
   it("returns adjacent transposed character pairs", () => {
     const pairs = getTransposedCharacterPairs(
       eventLog(

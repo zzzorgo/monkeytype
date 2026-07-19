@@ -14,7 +14,7 @@ import { quotesContract } from "./quotes";
 import { webhooksContract } from "./webhooks";
 import { connectionsContract } from "./connections";
 import { translationsContract } from "./translations";
-import { generatedCodeContract, weakspotContract } from "./generated-code";
+import { generatedCodeContract } from "./generated-code";
 
 const c = initContract();
 
@@ -35,12 +35,11 @@ export const contract = c.router({
   connections: connectionsContract,
   translations: translationsContract,
   generatedCode: generatedCodeContract,
-  weakspot: weakspotContract,
 });
 
 /**
  * Whenever there is a breaking change with old frontend clients increase this number.
  * This will inform the frontend to refresh.
  */
-export const COMPATIBILITY_CHECK = 6;
+export const COMPATIBILITY_CHECK = 7;
 export const COMPATIBILITY_CHECK_HEADER = "X-Compatibility-Check";

@@ -132,11 +132,6 @@ export const limits = {
     max: 10,
   },
 
-  weakspotPractice: {
-    window: "minute",
-    max: 10,
-  },
-
   generatedCode: {
     window: "minute",
     max: 10,

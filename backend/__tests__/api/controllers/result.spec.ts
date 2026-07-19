@@ -587,6 +587,10 @@ describe("result controller test", () => {
       UserDal,
       "recordMistypedCharacters",
     );
+    const userRecordMistypedWordsMock = vi.spyOn(
+      UserDal,
+      "recordMistypedWords",
+    );
     const userRecordTransposedCharacterPairsMock = vi.spyOn(
       UserDal,
       "recordTransposedCharacterPairs",
@@ -607,6 +611,7 @@ describe("result controller test", () => {
         userIncrementXpMock,
         userUpdateTypingStatsMock,
         userRecordMistypedCharactersMock,
+        userRecordMistypedWordsMock,
         userRecordTransposedCharacterPairsMock,
         userRecordMistakeTypesMock,
         resultAddMock,
@@ -627,6 +632,7 @@ describe("result controller test", () => {
       const completedEvent = buildCompletedEvent({
         funbox: ["58008", "read_ahead_hard"],
         mistypedCharacters: [{ original: "c", typed: "x" }],
+        mistypedWords: ["cat"],
         transposedCharacterPairs: [{ original: "ca", typed: "ac" }],
         mistakeSummary: [{ type: "wrong_character", count: 1 }],
       });
@@ -644,6 +650,11 @@ describe("result controller test", () => {
         uid,
         "english",
         [{ original: "c", typed: "x" }],
+      );
+      expect(userRecordMistypedWordsMock).toHaveBeenCalledWith(
+        uid,
+        "english",
+        ["cat"],
       );
       expect(userRecordTransposedCharacterPairsMock).toHaveBeenCalledWith(
         uid,
@@ -722,6 +733,8 @@ describe("result controller test", () => {
       const completedEvent = buildCompletedEvent({
         funbox: ["weakspot"],
         mistypedCharacters: [{ original: ",", typed: "." }],
+        mistypedWords: ["word"],
+        transposedCharacterPairs: [{ original: "ca", typed: "ac" }],
         mistakeSummary: [{ type: "wrong_character", count: 1 }],
       });
 
@@ -732,6 +745,7 @@ describe("result controller test", () => {
         .expect(200);
 
       expect(userRecordMistypedCharactersMock).not.toHaveBeenCalled();
+      expect(userRecordMistypedWordsMock).not.toHaveBeenCalled();
       expect(userRecordTransposedCharacterPairsMock).not.toHaveBeenCalled();
       expect(userRecordMistakeTypesMock).not.toHaveBeenCalled();
     });

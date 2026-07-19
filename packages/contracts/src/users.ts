@@ -38,6 +38,7 @@ import { LanguageSchema } from "@monkeytype/schemas/languages";
 import { CustomThemeColorsSchema } from "@monkeytype/schemas/configs";
 import {
   MistypedCharacterSchema,
+  MistypedWordSchema,
   TransposedCharacterPairSchema,
 } from "@monkeytype/schemas/results";
 
@@ -210,6 +211,11 @@ const TransposedCharacterStatSchema = z
   .object({ count: z.number().int().nonnegative() })
   .merge(TransposedCharacterPairSchema);
 
+const MistypedWordStatSchema = z.object({
+  word: MistypedWordSchema,
+  count: z.number().int().nonnegative(),
+});
+
 export const GetStatsResponseSchema = responseWithData(
   z.object({
     completedTests: z.number().int().nonnegative().optional(),
@@ -218,6 +224,7 @@ export const GetStatsResponseSchema = responseWithData(
     mistypedCharacterStats: z
       .record(z.array(MistypedCharacterStatSchema))
       .optional(),
+    mistypedWordStats: z.record(z.array(MistypedWordStatSchema)).optional(),
     transposedCharacterStats: z
       .record(z.array(TransposedCharacterStatSchema))
       .optional(),
