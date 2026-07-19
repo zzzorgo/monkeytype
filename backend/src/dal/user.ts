@@ -45,6 +45,7 @@ import { Configuration } from "@monkeytype/schemas/configuration";
 import { isToday, isYesterday } from "@monkeytype/util/date-and-time";
 import GeorgeQueue from "../queues/george-queue";
 import { aggregateWithAcceptedConnections } from "./connections";
+import { normalizeMistypedWord } from "../utils/mistyped-word-stats";
 
 export type DBUserTag = WithObjectId<UserTag>;
 
@@ -688,7 +689,7 @@ export async function recordMistypedWords(
 
   const keys = new Set(
     words
-      .map((word) => word.replace(/\p{P}/gu, ""))
+      .map(normalizeMistypedWord)
       .filter((word) => word.length > 0)
       .map((word) => Buffer.from(word).toString("base64url")),
   );

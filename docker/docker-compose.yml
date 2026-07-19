@@ -85,6 +85,32 @@ services:
       retries: 15
       start_period: 5s
 
+  mistyped-word-stats-migration:
+    build:
+      context: ..
+      dockerfile: docker/backend/Dockerfile
+      target: builder
+
+    profiles: [migration]
+
+    environment:
+      - DB_NAME=monkeytype
+      - DB_URI=mongodb://monkeytype-mongodb:27017
+
+    depends_on:
+      monkeytype-mongodb:
+        condition: service_healthy
+
+    command:
+      [
+        "pnpm",
+        "--filter",
+        "@monkeytype/backend",
+        "exec",
+        "tsx",
+        "__migration__/normalizeMistypedWordStats.ts",
+      ]
+
   monkeytype-redis:
     container_name: monkeytype-redis
     image: redis:6.2.6

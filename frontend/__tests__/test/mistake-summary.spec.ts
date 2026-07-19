@@ -61,6 +61,20 @@ describe("mistake summary", () => {
     ).toEqual(["cat", "dog"]);
   });
 
+  it("deduplicates mistyped target words regardless of capitalization", () => {
+    expect(
+      getMistypedWords(
+        eventLog(
+          ["Local! ", "local "],
+          [
+            input("x", { data: "x", correct: false }),
+            input("y", { data: "y", correct: false, wordIndex: 1 }),
+          ],
+        ),
+      ),
+    ).toEqual(["local"]);
+  });
+
   it("returns adjacent transposed character pairs", () => {
     const pairs = getTransposedCharacterPairs(
       eventLog(

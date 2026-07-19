@@ -4,6 +4,7 @@ import MonkeyError, {
   isFirebaseError,
 } from "../../utils/error";
 import { MonkeyResponse } from "../../utils/monkey-response";
+import { normalizeMistypedWordStats } from "../../utils/mistyped-word-stats";
 import * as DiscordUtils from "../../utils/discord";
 import {
   buildAgentLog,
@@ -909,14 +910,10 @@ export async function getStats(req: MonkeyRequest): Promise<GetStatsResponse> {
   const decodedMistypedWordStats = Object.fromEntries(
     Object.entries(mistypedWordStats ?? {}).map(([language, words]) => [
       language,
-      Object.entries(words).flatMap(([key, count]) => {
-        try {
-          const word = Buffer.from(key, "base64url").toString();
-          return word.length > 0 ? [{ word, count }] : [];
-        } catch {
-          return [];
-        }
-      }),
+      Object.entries(normalizeMistypedWordStats(words)).map(([key, count]) => ({
+        word: Buffer.from(key, "base64url").toString(),
+        count,
+      })),
     ]),
   );
   const decodedTransposedCharacterStats = decodeCharacterStats(
