@@ -522,10 +522,16 @@ export function getMistakeAnalysis(eventLog: EventLog): MistakeAnalysis {
 export function getMistypedWords(eventLog: EventLog): string[] {
   return [
     ...new Set(
-      getMistakeAnalysis(eventLog).occurrences.flatMap(({ targetWord }) => {
-        const word = (targetWord?.replace(/\p{P}/gu, "") ?? "").toLowerCase();
-        return word.length > 0 && word.length <= 40 ? [word] : [];
-      }),
+      getMistakeAnalysis(eventLog).occurrences.flatMap(
+        ({ targetWord, type }) => {
+          if (type === "wrong_capitalization") return [];
+
+          const word = (
+            targetWord?.replace(/\p{P}/gu, "") ?? ""
+          ).toLowerCase();
+          return word.length > 0 && word.length <= 40 ? [word] : [];
+        },
+      ),
     ),
   ].slice(0, 100);
 }

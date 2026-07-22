@@ -8,7 +8,7 @@ export type MistypedWord = {
 export function getTopMistypedWords(
   stats: GetStatsResponse["data"],
   language: string,
-  limit = 10,
+  limit?: number,
 ): MistypedWord[] {
   return [...(stats.mistypedWordStats?.[language] ?? [])]
     .sort((a, b) => b.count - a.count)

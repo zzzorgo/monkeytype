@@ -75,6 +75,23 @@ describe("mistake summary", () => {
     ).toEqual(["local"]);
   });
 
+  it("excludes words with only capitalization mistakes", () => {
+    expect(
+      getMistypedWords(
+        eventLog(
+          ["Cat "],
+          [
+            input("cat ", {
+              data: " ",
+              correct: false,
+              commitsWord: true,
+            }),
+          ],
+        ),
+      ),
+    ).toEqual([]);
+  });
+
   it("returns adjacent transposed character pairs", () => {
     const pairs = getTransposedCharacterPairs(
       eventLog(

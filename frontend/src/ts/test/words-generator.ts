@@ -20,6 +20,7 @@ import {
   findSingleActiveFunboxWithFunction,
   getActiveFunboxes,
   getActiveFunboxesWithFunction,
+  isFunboxActive,
   isFunboxActiveWithFunction,
   isFunboxActiveWithProperty,
 } from "./funbox/list";
@@ -996,7 +997,7 @@ export async function getNextWord(
   if (
     Config.punctuation &&
     !currentLanguage.originalPunctuation &&
-    !isCurrentlyUsingFunboxSection
+    (!isCurrentlyUsingFunboxSection || isFunboxActive("weakspot"))
   ) {
     randomWord = await punctuateWord(
       previousWord,

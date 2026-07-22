@@ -25,4 +25,16 @@ describe("getTopMistypedWords", () => {
       { word: "chat", count: 5 },
     ]);
   });
+
+  it("returns all mistyped words when no limit is specified", () => {
+    const entries = Array.from({ length: 11 }, (_, index) => ({
+      word: `word${index}`,
+      count: index,
+    }));
+    const stats = {
+      mistypedWordStats: { english: entries },
+    } satisfies GetStatsResponse["data"];
+
+    expect(getTopMistypedWords(stats, "english")).toHaveLength(11);
+  });
 });

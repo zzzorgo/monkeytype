@@ -6,4 +6,4 @@ For typechecking, use `pnpm oxlint --type-aware --type-check` instead of `tsc`.
 For styling, use Tailwind CSS, class property, `cn` utility. Do not use classlist. Only colors available are those defined in Tailwind config.
 In legacy code, use `i` tags with FontAwesome classes. In new code, use `Fa` component.
 In plan mode, before writing up a plan, ask clarifying questions if needed. At the end of plan mode, give me a list of unresolved questions to answer, if any. Make them concise.
-Weakspot uses the persisted top 10 mistyped words for the selected language as a direct drill; never include weakspot results in word, character, or mistake-type stats.
+Weakspot uses persisted mistyped words for the selected language as a direct drill; use as many as the current test requires and never include weakspot results in word, character, or mistake-type stats.
