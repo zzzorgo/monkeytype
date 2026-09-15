@@ -32,6 +32,9 @@ services:
       - FIREBASE_APPID=${FIREBASE_APPID:-}
       - MONKEYTYPE_BACKENDURL=/api
       - RECAPTCHA_SITE_KEY=${RECAPTCHA_SITE_KEY:-}
+    networks:
+      - default
+      - proxy
 
   monkeytype-backend:
     container_name: monkeytype-backend
@@ -62,6 +65,9 @@ services:
       - EMAIL_USER=${EMAIL_USER:-}
       - EMAIL_PASS=${EMAIL_PASS:-}
       - EMAIL_FROM=${EMAIL_FROM:-}
+
+    networks:
+      - default
 
     volumes:
       - type: bind
@@ -97,6 +103,9 @@ services:
       - DB_NAME=monkeytype
       - DB_URI=mongodb://monkeytype-mongodb:27017
 
+    networks:
+      - default
+
     depends_on:
       monkeytype-mongodb:
         condition: service_healthy
@@ -126,6 +135,8 @@ services:
       timeout: 10s
       retries: 15
       start_period: 10s
+    networks:
+      - default
 
 
   monkeytype-mongodb:
@@ -143,3 +154,10 @@ services:
       timeout: 10s
       retries: 15
       start_period: 10s
+    networks:
+      - default
+
+networks:
+  proxy:
+    external: true
+    name: slave_default

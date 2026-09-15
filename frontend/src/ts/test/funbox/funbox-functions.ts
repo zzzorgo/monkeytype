@@ -581,7 +581,11 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
         Config.mode === "quote"
           ? Strings.removeLanguageSize(Config.language)
           : Config.language;
-      const words = getTopMistypedWords(stats.body.data, language);
+      const limit =
+        Config.mode === "words" && Config.words > 0
+          ? Config.words
+          : undefined;
+      const words = getTopMistypedWords(stats.body.data, language, limit);
       if (words.length === 0) {
         throw new WordGenError(
           "No mistyped words recorded for this language yet.",

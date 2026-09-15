@@ -307,13 +307,13 @@ function MinBurst() {
 function Funbox() {
   const funboxes = createMemo(() => {
     //getConfig.funbox doesn't work reactive, wrapping in a memo
-    if (getConfig.funbox.length === 0) return undefined;
+    if (getConfig.funbox.length === 0) return "funbox";
     return [...getConfig.funbox].map(replaceUnderscoresWithSpaces).join(", ");
   });
 
   return (
     <Notice
-      when={funboxes() !== undefined}
+      when={true}
       icon="fa-gamepad"
       openCommandline="funbox"
       text={funboxes()}
