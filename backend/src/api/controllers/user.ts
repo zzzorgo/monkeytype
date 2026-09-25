@@ -878,6 +878,7 @@ export async function getStats(req: MonkeyRequest): Promise<GetStatsResponse> {
   const {
     mistypedCharacterStats,
     mistypedWordStats,
+    successfulWordStats,
     transposedCharacterStats,
     mistakeTypeStats,
     ...stats
@@ -907,12 +908,20 @@ export async function getStats(req: MonkeyRequest): Promise<GetStatsResponse> {
   const decodedMistypedCharacterStats = decodeCharacterStats(
     mistypedCharacterStats ?? {},
   );
+  const normalizedSuccessfulWordStats = Object.fromEntries(
+    Object.entries(successfulWordStats ?? {}).map(([language, words]) => [
+      language,
+      normalizeMistypedWordStats(words),
+    ]),
+  );
   const decodedMistypedWordStats = Object.fromEntries(
     Object.entries(mistypedWordStats ?? {}).map(([language, words]) => [
       language,
       Object.entries(normalizeMistypedWordStats(words)).map(([key, count]) => ({
         word: Buffer.from(key, "base64url").toString(),
         count,
+        successfulCount:
+          normalizedSuccessfulWordStats[language]?.[key] ?? 0,
       })),
     ]),
   );

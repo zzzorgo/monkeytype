@@ -76,6 +76,7 @@ export type DBUser = Omit<
   note?: string;
   mistypedCharacterStats?: Record<string, Record<string, number>>;
   mistypedWordStats?: Record<string, Record<string, number>>;
+  successfulWordStats?: Record<string, Record<string, number>>;
   transposedCharacterStats?: Record<string, Record<string, number>>;
   mistakeTypeStats?: Record<string, Record<string, number>>;
 };
@@ -173,6 +174,7 @@ export async function resetUser(uid: string): Promise<void> {
         timeTyping: 0,
         mistypedCharacterStats: {},
         mistypedWordStats: {},
+        successfulWordStats: {},
         transposedCharacterStats: {},
         mistakeTypeStats: {},
         lbMemory: {},
@@ -709,6 +711,35 @@ export async function recordMistypedWords(
   );
 }
 
+export async function recordSuccessfulWords(
+  uid: string,
+  language: string,
+  words: MistypedWord[],
+): Promise<void> {
+  if (words.length === 0) return;
+
+  const keys = new Set(
+    words
+      .map(normalizeMistypedWord)
+      .filter((word) => word.length > 0)
+      .map((word) => Buffer.from(word).toString("base64url")),
+  );
+
+  if (keys.size === 0) return;
+
+  await getUsersCollection().updateOne(
+    { uid },
+    {
+      $inc: Object.fromEntries(
+        [...keys].map((key) => [
+          `successfulWordStats.${language}.${key}`,
+          1,
+        ]),
+      ),
+    },
+  );
+}
+
 export async function recordTransposedCharacterPairs(
   uid: string,
   language: string,
@@ -945,6 +976,7 @@ export async function getStats(
     | "timeTyping"
     | "mistypedCharacterStats"
     | "mistypedWordStats"
+    | "successfulWordStats"
     | "transposedCharacterStats"
     | "mistakeTypeStats"
   >
@@ -955,6 +987,7 @@ export async function getStats(
     "timeTyping",
     "mistypedCharacterStats",
     "mistypedWordStats",
+    "successfulWordStats",
     "transposedCharacterStats",
     "mistakeTypeStats",
   ]);

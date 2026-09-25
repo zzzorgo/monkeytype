@@ -591,6 +591,10 @@ describe("result controller test", () => {
       UserDal,
       "recordMistypedWords",
     );
+    const userRecordSuccessfulWordsMock = vi.spyOn(
+      UserDal,
+      "recordSuccessfulWords",
+    );
     const userRecordTransposedCharacterPairsMock = vi.spyOn(
       UserDal,
       "recordTransposedCharacterPairs",
@@ -612,6 +616,7 @@ describe("result controller test", () => {
         userUpdateTypingStatsMock,
         userRecordMistypedCharactersMock,
         userRecordMistypedWordsMock,
+        userRecordSuccessfulWordsMock,
         userRecordTransposedCharacterPairsMock,
         userRecordMistakeTypesMock,
         resultAddMock,
@@ -633,6 +638,7 @@ describe("result controller test", () => {
         funbox: ["58008", "read_ahead_hard"],
         mistypedCharacters: [{ original: "c", typed: "x" }],
         mistypedWords: ["cat"],
+        successfulWords: ["dog"],
         transposedCharacterPairs: [{ original: "ca", typed: "ac" }],
         mistakeSummary: [{ type: "wrong_character", count: 1 }],
       });
@@ -655,6 +661,11 @@ describe("result controller test", () => {
         uid,
         "english",
         ["cat"],
+      );
+      expect(userRecordSuccessfulWordsMock).toHaveBeenCalledWith(
+        uid,
+        "english",
+        ["dog"],
       );
       expect(userRecordTransposedCharacterPairsMock).toHaveBeenCalledWith(
         uid,
@@ -729,11 +740,12 @@ describe("result controller test", () => {
       );
     });
 
-    it("should not record mistake statistics for weakspot tests", async () => {
+    it("should only record word statistics for weakspot tests", async () => {
       const completedEvent = buildCompletedEvent({
         funbox: ["weakspot"],
         mistypedCharacters: [{ original: ",", typed: "." }],
         mistypedWords: ["word"],
+        successfulWords: ["practice"],
         transposedCharacterPairs: [{ original: "ca", typed: "ac" }],
         mistakeSummary: [{ type: "wrong_character", count: 1 }],
       });
@@ -745,7 +757,16 @@ describe("result controller test", () => {
         .expect(200);
 
       expect(userRecordMistypedCharactersMock).not.toHaveBeenCalled();
-      expect(userRecordMistypedWordsMock).not.toHaveBeenCalled();
+      expect(userRecordMistypedWordsMock).toHaveBeenCalledWith(
+        uid,
+        "english",
+        ["word"],
+      );
+      expect(userRecordSuccessfulWordsMock).toHaveBeenCalledWith(
+        uid,
+        "english",
+        ["practice"],
+      );
       expect(userRecordTransposedCharacterPairsMock).not.toHaveBeenCalled();
       expect(userRecordMistakeTypesMock).not.toHaveBeenCalled();
     });

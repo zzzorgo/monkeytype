@@ -2797,9 +2797,17 @@ describe("user controller test", () => {
     it("should decode mistyped word stats", async () => {
       const wordKey = Buffer.from("cat").toString("base64url");
       const capitalizedWordKey = Buffer.from("Cat!").toString("base64url");
+      const oldWordKey = Buffer.from("dog").toString("base64url");
       getStatsMock.mockResolvedValue({
         mistypedWordStats: {
-          english: { [wordKey]: 2, [capitalizedWordKey]: 3 },
+          english: {
+            [wordKey]: 2,
+            [capitalizedWordKey]: 3,
+            [oldWordKey]: 1,
+          },
+        },
+        successfulWordStats: {
+          english: { [wordKey]: 7 },
         },
       });
 
@@ -2812,7 +2820,10 @@ describe("user controller test", () => {
         message: "Personal stats retrieved",
         data: {
           mistypedWordStats: {
-            english: [{ word: "cat", count: 5 }],
+            english: [
+              { word: "cat", count: 5, successfulCount: 7 },
+              { word: "dog", count: 1, successfulCount: 0 },
+            ],
           },
         },
       });

@@ -214,6 +214,7 @@ const TransposedCharacterStatSchema = z
 const MistypedWordStatSchema = z.object({
   word: MistypedWordSchema,
   count: z.number().int().nonnegative(),
+  successfulCount: z.number().int().nonnegative(),
 });
 
 export const GetStatsResponseSchema = responseWithData(

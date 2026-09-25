@@ -127,6 +127,7 @@ import {
   getMistakeSummary,
   getMistypedCharacters,
   getMistypedWords,
+  getSuccessfulWords,
   getTransposedCharacterPairs,
 } from "./mistake-summary";
 import { invalidateUserStats } from "../queries/user";
@@ -833,6 +834,7 @@ function buildCompletedEvent(
     mistypedCharacters: getMistypedCharacters(eventLog),
     transposedCharacterPairs: getTransposedCharacterPairs(eventLog),
     mistypedWords: getMistypedWords(eventLog),
+    successfulWords: getSuccessfulWords(eventLog),
     mistakeSummary: getMistakeSummary(eventLog),
   };
 

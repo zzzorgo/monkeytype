@@ -4,6 +4,7 @@ import {
   getMistakeAnalysis,
   getMistypedCharacters,
   getMistypedWords,
+  getSuccessfulWords,
   getMistakeSummary,
   getTransposedCharacterPairs,
 } from "../../src/ts/test/mistake-summary";
@@ -90,6 +91,45 @@ describe("mistake summary", () => {
         ),
       ),
     ).toEqual([]);
+  });
+
+  it("returns committed words without mistakes as successful", () => {
+    expect(
+      getSuccessfulWords(
+        eventLog(
+          ["Cat! ", "dog "],
+          [
+            input("Cat! ", { commitsWord: true }),
+            input("x ", {
+              correct: false,
+              commitsWord: true,
+              wordIndex: 1,
+            }),
+          ],
+        ),
+      ),
+    ).toEqual(["cat"]);
+  });
+
+  it("counts a correct final word without a commit event", () => {
+    expect(
+      getSuccessfulWords(
+        eventLog(["cat"], [input("cat", { data: "t", correct: true })]),
+      ),
+    ).toEqual(["cat"]);
+  });
+
+  it("keeps a corrected final word classified as mistyped", () => {
+    const log = eventLog(
+      ["cat"],
+      [
+        input("x", { data: "x", correct: false }),
+        input("cat", { data: "t", correct: true }),
+      ],
+    );
+
+    expect(getMistypedWords(log)).toEqual(["cat"]);
+    expect(getSuccessfulWords(log)).toEqual([]);
   });
 
   it("returns adjacent transposed character pairs", () => {

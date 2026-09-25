@@ -536,6 +536,50 @@ export function getMistypedWords(eventLog: EventLog): string[] {
   ].slice(0, 100);
 }
 
+export function getSuccessfulWords(eventLog: EventLog): string[] {
+  const failedWordIndexes = new Set(
+    getMistakeAnalysis(eventLog).occurrences.flatMap(({ wordIndex, type }) =>
+      type === "wrong_capitalization" ? [] : [wordIndex],
+    ),
+  );
+  const completedWordIndexes = new Set<number>();
+  const finalInputs = new Map<number, string>();
+
+  for (const event of eventLog.events) {
+    if (event.type !== "input") continue;
+
+    finalInputs.set(event.data.wordIndex, event.data.inputValue);
+    if ("commitsWord" in event.data && event.data.commitsWord) {
+      completedWordIndexes.add(event.data.wordIndex);
+    }
+  }
+
+  for (const [wordIndex, input] of finalInputs) {
+    const target = eventLog.context.targetWords[wordIndex];
+    if (
+      target !== undefined &&
+      target === withoutCommitCharacter(target, target) &&
+      input === target
+    ) {
+      completedWordIndexes.add(wordIndex);
+    }
+  }
+
+  const successfulWords = new Set<string>();
+  for (const wordIndex of completedWordIndexes) {
+    if (failedWordIndexes.has(wordIndex)) continue;
+
+    const targetWord = eventLog.context.targetWords[wordIndex];
+    if (targetWord === undefined) continue;
+    const word = withoutCommitCharacter(targetWord, targetWord)
+      .replace(/\p{P}/gu, "")
+      .toLowerCase();
+    if (word.length > 0 && word.length <= 40) successfulWords.add(word);
+  }
+
+  return [...successfulWords].slice(0, 100);
+}
+
 export function getMistakeSummary(eventLog: EventLog): MistakeSummaryItem[] {
   return getMistakeAnalysis(eventLog).summary;
 }

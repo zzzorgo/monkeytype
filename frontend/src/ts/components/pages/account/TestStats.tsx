@@ -218,20 +218,30 @@ function MistypedCharacters(props: {
       languages.length === 0
         ? Object.values(stats).flat()
         : languages.flatMap((language) => stats[language] ?? []);
-    const total = selectedStats.reduce((sum, stat) => sum + stat.count, 0);
-    const totalsByWord = new Map<string, number>();
+    const totalsByWord = new Map<
+      string,
+      { count: number; successfulCount: number }
+    >();
     for (const stat of selectedStats) {
-      totalsByWord.set(
-        stat.word,
-        (totalsByWord.get(stat.word) ?? 0) + stat.count,
-      );
+      const total = totalsByWord.get(stat.word) ?? {
+        count: 0,
+        successfulCount: 0,
+      };
+      total.count += stat.count;
+      total.successfulCount += stat.successfulCount;
+      totalsByWord.set(stat.word, total);
     }
 
     return {
-      total,
       entries: [...totalsByWord]
-        .map(([word, count]) => ({ word, count }))
-        .sort((a, b) => b.count - a.count)
+        .map(([word, counts]) => ({ word, ...counts }))
+        .sort((a, b) => {
+          const aRatio =
+            a.successfulCount === 0 ? Infinity : a.count / a.successfulCount;
+          const bRatio =
+            b.successfulCount === 0 ? Infinity : b.count / b.successfulCount;
+          return aRatio === bRatio ? b.count - a.count : bRatio - aRatio;
+        })
         .slice(0, 20),
     };
   });
@@ -297,8 +307,9 @@ function MistypedCharacters(props: {
                 <TableHeader>
                   <TableRow>
                     <TableHead>word</TableHead>
-                    <TableHead class="text-right">count</TableHead>
-                    <TableHead class="text-right">share</TableHead>
+                    <TableHead class="text-right">failed</TableHead>
+                    <TableHead class="text-right">successful</TableHead>
+                    <TableHead class="text-right">fail : success</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -308,11 +319,10 @@ function MistypedCharacters(props: {
                         <TableCell>{mistake.word}</TableCell>
                         <TableCell class="text-right">{mistake.count}</TableCell>
                         <TableCell class="text-right">
-                          {(
-                            (mistake.count / mistypedWords().total) *
-                            100
-                          ).toFixed(1)}
-                          %
+                          {mistake.successfulCount}
+                        </TableCell>
+                        <TableCell class="text-right">
+                          {mistake.count} : {mistake.successfulCount}
                         </TableCell>
                       </TableRow>
                     )}

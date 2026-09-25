@@ -482,17 +482,24 @@ export async function addResult(
     completedEvent.restartCount,
     totalDurationTypedSeconds,
   );
+  await Promise.all([
+    UserDAL.recordMistypedWords(
+      uid,
+      completedEvent.language,
+      completedEvent.mistypedWords ?? [],
+    ),
+    UserDAL.recordSuccessfulWords(
+      uid,
+      completedEvent.language,
+      completedEvent.successfulWords ?? [],
+    ),
+  ]);
   if (!completedEvent.funbox?.includes("weakspot")) {
     await Promise.all([
       UserDAL.recordMistypedCharacters(
         uid,
         completedEvent.language,
         completedEvent.mistypedCharacters ?? [],
-      ),
-      UserDAL.recordMistypedWords(
-        uid,
-        completedEvent.language,
-        completedEvent.mistypedWords ?? [],
       ),
       UserDAL.recordTransposedCharacterPairs(
         uid,

@@ -192,6 +192,7 @@ export const CompletedEventSchema = ResultBaseSchema.required({
       .max(100)
       .optional(),
     mistypedWords: z.array(MistypedWordSchema).max(100).optional(),
+    successfulWords: z.array(MistypedWordSchema).max(100).optional(),
     mistakeSummary: z.array(MistakeSummaryItemSchema).max(7).optional(),
   })
   .strict();
