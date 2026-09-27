@@ -1,4 +1,6 @@
 import { Accessor, createMemo, For, JSXElement, Show } from "solid-js";
+import { LanguageSchema } from "@monkeytype/schemas/languages";
+import { z } from "zod";
 import { useQuery } from "@tanstack/solid-query";
 
 import {
@@ -8,10 +10,13 @@ import {
 } from "../../../collections/results";
 import { getFormatting } from "../../../states/core";
 import { secondsToString } from "../../../utils/date-and-time";
+import { getLanguageDisplayString } from "../../../utils/strings";
 import { getUserStatsQueryOptions } from "../../../queries/user";
+import { useLocalStorage } from "../../../hooks/useLocalStorage";
 import AsyncContent from "../../common/AsyncContent";
 import { Fa } from "../../common/Fa";
 import { H3 } from "../../common/Headers";
+import SlimSelect from "../../ui/SlimSelect";
 import {
   Table,
   TableBody,
@@ -20,6 +25,12 @@ import {
   TableHeader,
   TableRow,
 } from "../../ui/table/Table";
+
+const MistypedWordsLanguageSchema = z.union([
+  z.literal("all"),
+  LanguageSchema,
+]);
+type MistypedWordsLanguage = z.infer<typeof MistypedWordsLanguageSchema>;
 
 export function TestStats(props: {
   queryState: Accessor<ResultsQueryState | undefined>;
@@ -179,6 +190,11 @@ function MistypedCharacters(props: {
   queryState: Accessor<ResultsQueryState | undefined>;
 }): JSXElement {
   const statsQuery = useQuery(() => getUserStatsQueryOptions());
+  const [mistypedWordsLanguage, setMistypedWordsLanguage] = useLocalStorage({
+    key: "accountMistypedWordsLanguage",
+    schema: MistypedWordsLanguageSchema,
+    fallback: "all" as const,
+  });
   const selectedLanguages = createMemo(
     () => props.queryState()?.language ?? [],
   );
@@ -211,13 +227,35 @@ function MistypedCharacters(props: {
         .slice(0, 20),
     };
   });
+  const mistypedWordLanguages = createMemo(() => {
+    const stats = statsQuery.data?.mistypedWordStats ?? {};
+    return Object.entries(stats)
+      .flatMap(([language, entries]) => {
+        const parsed = LanguageSchema.safeParse(language);
+        return entries.length > 0 && parsed.success ? [parsed.data] : [];
+      })
+      .sort((a, b) =>
+        getLanguageDisplayString(a).localeCompare(getLanguageDisplayString(b)),
+      );
+  });
+  const activeMistypedWordsLanguage = createMemo<MistypedWordsLanguage>(() => {
+    const language = mistypedWordsLanguage();
+    return language === "all" || mistypedWordLanguages().includes(language)
+      ? language
+      : "all";
+  });
+  const mistypedWordLanguageOptions = createMemo(() => [
+    { value: "all", text: "all languages" },
+    ...mistypedWordLanguages().map((language) => ({
+      value: language,
+      text: getLanguageDisplayString(language),
+    })),
+  ]);
   const mistypedWords = createMemo(() => {
     const stats = statsQuery.data?.mistypedWordStats ?? {};
-    const languages = selectedLanguages();
+    const language = activeMistypedWordsLanguage();
     const selectedStats =
-      languages.length === 0
-        ? Object.values(stats).flat()
-        : languages.flatMap((language) => stats[language] ?? []);
+      language === "all" ? Object.values(stats).flat() : (stats[language] ?? []);
     const totalsByWord = new Map<
       string,
       { count: number; successfulCount: number }
@@ -300,9 +338,30 @@ function MistypedCharacters(props: {
     <AsyncContent queries={{ statsQuery }}>
       {() => (
         <>
-          <Show when={mistypedWords().entries.length > 0}>
+          <Show when={mistypedWordLanguages().length > 0}>
             <div class="mt-8">
-              <H3 fa={{ icon: "fa-font" }} text="mistyped words" />
+              <div class="mb-2 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <H3
+                  class="pb-0"
+                  fa={{ icon: "fa-font" }}
+                  text="mistyped words"
+                />
+                <div class="w-full md:w-64">
+                  <SlimSelect
+                    options={mistypedWordLanguageOptions()}
+                    selected={activeMistypedWordsLanguage()}
+                    settings={{
+                      showSearch: true,
+                      placeholderText: "select a language",
+                    }}
+                    onChange={(selected) => {
+                      const parsed =
+                        MistypedWordsLanguageSchema.safeParse(selected);
+                      if (parsed.success) setMistypedWordsLanguage(parsed.data);
+                    }}
+                  />
+                </div>
+              </div>
               <Table class="table-auto text-xs md:text-sm lg:text-base">
                 <TableHeader>
                   <TableRow>
@@ -322,7 +381,11 @@ function MistypedCharacters(props: {
                           {mistake.successfulCount}
                         </TableCell>
                         <TableCell class="text-right">
-                          {mistake.count} : {mistake.successfulCount}
+                          {mistake.successfulCount === 0
+                            ? "Infinity"
+                            : (
+                                mistake.count / mistake.successfulCount
+                              ).toFixed(2)}
                         </TableCell>
                       </TableRow>
                     )}

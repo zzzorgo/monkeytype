@@ -13,11 +13,12 @@ services:
     ports:
       - "${HTTP_PORT:-8089}:80"
 
-    restart: on-failure
+    restart: unless-stopped
 
     depends_on:
       monkeytype-backend:
         condition: service_healthy
+        restart: true
 
     env_file:
       - path: ./.env
@@ -48,12 +49,13 @@ services:
     ports:
       - "${BACKEND_PORT:-5005}:5005"
 
-    restart: on-failure
+    restart: unless-stopped
 
     environment:
       - DB_NAME=monkeytype
       - DB_URI=mongodb://monkeytype-mongodb:27017
       - REDIS_URI=redis://monkeytype-redis:6379
+      - WAIT_FOR_HOSTS=monkeytype-mongodb:27017 monkeytype-redis:6379
       - FRONTEND_URL=${MONKEYTYPE_FRONTENDURL}
       - RECAPTCHA_SECRET=${RECAPTCHA_SECRET:-}
       - RATE_LIMIT_MULTIPLIER=${RATE_LIMIT_MULTIPLIER:-100000}
@@ -81,8 +83,10 @@ services:
     depends_on:
       monkeytype-redis:
         condition: service_healthy
+        restart: true
       monkeytype-mongodb:
         condition: service_healthy
+        restart: true
 
     healthcheck:
       test: ["CMD", "nc", "-z", "-v", "localhost", "5005"]
@@ -126,7 +130,7 @@ services:
     #uncomment if you want to expose the redis server
     #ports:
     #  - "${REDIS_PORT:-6379}:6379"
-    restart: on-failure
+    restart: unless-stopped
     volumes:
       - ../.volumes/redis-data:/data
     healthcheck:
@@ -142,7 +146,7 @@ services:
   monkeytype-mongodb:
     container_name: monkeytype-mongodb
     image: mongo:5.0.13
-    restart: on-failure
+    restart: unless-stopped
     volumes:
       - ../.volumes/mongo-data:/data/db
     #uncomment if you want to expose the mongodb server
