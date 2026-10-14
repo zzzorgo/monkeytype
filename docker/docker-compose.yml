@@ -4,6 +4,9 @@ services:
   monkeytype-frontend:
     container_name: monkeytype-frontend
     image: monkeytype/monkeytype-frontend:latest
+    networks:
+      - default
+      - proxy
     ports:
       - "${HTTP_PORT:-8080}:80"
     restart: on-failure
@@ -99,3 +102,8 @@ volumes:
     name: monkeytype_mongo_data
   redis-data:
     name: monkeytype_redis_data
+
+networks:
+  proxy:
+    name: proxy
+    external: true
