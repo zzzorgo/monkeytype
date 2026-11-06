@@ -1077,11 +1077,29 @@ export async function finish(difficultyFailed = false): Promise<void> {
 
   let savingResultPromise: ReturnType<typeof saveResult> =
     Promise.resolve(null);
+  let savingStatsPromise: ReturnType<typeof Ape.results.addStats> | undefined;
   const userId = getUserId();
   if (userId !== null) {
     // logged in
     if (dontSave) {
       void AnalyticsController.log("testCompletedInvalid");
+      if (difficultyFailed && Config.resultSaving) {
+        savingStatsPromise = Ape.results.addStats({
+          body: {
+            language: completedEvent.language,
+            funbox: completedEvent.funbox,
+            mistypedCharacters: completedEvent.mistypedCharacters ?? [],
+            mistypedWords: completedEvent.mistypedWords ?? [],
+            successfulWords: completedEvent.successfulWords ?? [],
+            transposedCharacterPairs:
+              completedEvent.transposedCharacterPairs ?? [],
+            mistakeSummary: completedEvent.mistakeSummary ?? [],
+          },
+        });
+        void savingStatsPromise.then((response) => {
+          if (response.status === 200) void invalidateUserStats();
+        });
+      }
     } else {
       resetIncompleteTests();
 
@@ -1120,7 +1138,11 @@ export async function finish(difficultyFailed = false): Promise<void> {
     dontSave,
   );
 
-  await Promise.all([savingResultPromise, resultUpdatePromise]);
+  await Promise.all([
+    savingResultPromise,
+    savingStatsPromise,
+    resultUpdatePromise,
+  ]);
 }
 
 async function saveResult(

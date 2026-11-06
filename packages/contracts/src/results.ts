@@ -9,10 +9,16 @@ import {
 } from "./util/api";
 import {
   CompletedEventSchema,
+  MistakeSummaryItemSchema,
+  MistypedCharacterSchema,
+  MistypedWordSchema,
   PostResultResponseSchema,
   ResultMinifiedSchema,
   ResultSchema,
+  TransposedCharacterPairSchema,
 } from "@monkeytype/schemas/results";
+import { FunboxSchema } from "@monkeytype/schemas/configs";
+import { LanguageSchema } from "@monkeytype/schemas/languages";
 import { IdSchema } from "@monkeytype/schemas/util";
 
 export const GetResultsQuerySchema = z.object({
@@ -63,6 +69,17 @@ export const AddResultResponseSchema = responseWithData(
   PostResultResponseSchema,
 );
 export type AddResultResponse = z.infer<typeof AddResultResponseSchema>;
+
+export const AddResultStatsRequestSchema = z.object({
+  language: LanguageSchema,
+  funbox: FunboxSchema,
+  mistypedCharacters: z.array(MistypedCharacterSchema).max(100),
+  mistypedWords: z.array(MistypedWordSchema).max(100),
+  successfulWords: z.array(MistypedWordSchema).max(100),
+  transposedCharacterPairs: z.array(TransposedCharacterPairSchema).max(100),
+  mistakeSummary: z.array(MistakeSummaryItemSchema).max(7),
+});
+export type AddResultStatsRequest = z.infer<typeof AddResultStatsRequestSchema>;
 
 export const UpdateResultTagsRequestSchema = z.object({
   tagIds: z.array(IdSchema),
@@ -139,6 +156,23 @@ export const resultsContract = c.router(
         464: MonkeyClientError.describe("Missing key data"),
         465: MonkeyClientError.describe("Bot detected"),
         466: MonkeyClientError.describe("Duplicate result"),
+      },
+      metadata: meta({
+        rateLimit: "resultsAdd",
+        requireConfiguration: {
+          path: "results.savingEnabled",
+          invalidMessage: "Results are not being saved at this time.",
+        },
+      }),
+    },
+    addStats: {
+      summary: "add result statistics",
+      description: "Record statistics for a test without saving a result",
+      method: "POST",
+      path: "/stats",
+      body: AddResultStatsRequestSchema.strict(),
+      responses: {
+        200: MonkeyResponseSchema,
       },
       metadata: meta({
         rateLimit: "resultsAdd",

@@ -14,6 +14,9 @@ export default s.router(resultsContract, {
   add: {
     handler: async (r) => callController(ResultController.addResult)(r),
   },
+  addStats: {
+    handler: async (r) => callController(ResultController.addResultStats)(r),
+  },
   updateTags: {
     handler: async (r) => callController(ResultController.updateTags)(r),
   },

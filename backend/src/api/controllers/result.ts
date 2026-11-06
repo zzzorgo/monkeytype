@@ -35,6 +35,7 @@ import { addImportantLog, addLog } from "../../dal/logs";
 import {
   AddResultRequest,
   AddResultResponse,
+  AddResultStatsRequest,
   GetLastResultResponse,
   GetResultByIdPath,
   GetResultByIdResponse,
@@ -64,6 +65,38 @@ import { getFunbox, checkCompatibility } from "@monkeytype/funbox";
 import { tryCatch } from "@monkeytype/util/trycatch";
 import { getCachedConfiguration } from "../../init/configuration";
 import { getChallenges } from "@monkeytype/challenges";
+
+async function recordResultStats(
+  uid: string,
+  stats: AddResultStatsRequest,
+): Promise<void> {
+  await Promise.all([
+    UserDAL.recordMistypedWords(uid, stats.language, stats.mistypedWords),
+    UserDAL.recordSuccessfulWords(uid, stats.language, stats.successfulWords),
+  ]);
+  if (!stats.funbox.includes("weakspot")) {
+    await Promise.all([
+      UserDAL.recordMistypedCharacters(
+        uid,
+        stats.language,
+        stats.mistypedCharacters,
+      ),
+      UserDAL.recordTransposedCharacterPairs(
+        uid,
+        stats.language,
+        stats.transposedCharacterPairs,
+      ),
+      UserDAL.recordMistakeTypes(uid, stats.language, stats.mistakeSummary),
+    ]);
+  }
+}
+
+export async function addResultStats(
+  req: MonkeyRequest<undefined, AddResultStatsRequest>,
+): Promise<MonkeyResponse> {
+  await recordResultStats(req.ctx.decodedToken.uid, req.body);
+  return new MonkeyResponse("Result statistics saved", null);
+}
 
 try {
   if (!anticheatImplemented()) throw new Error("undefined");
@@ -482,37 +515,15 @@ export async function addResult(
     completedEvent.restartCount,
     totalDurationTypedSeconds,
   );
-  await Promise.all([
-    UserDAL.recordMistypedWords(
-      uid,
-      completedEvent.language,
-      completedEvent.mistypedWords ?? [],
-    ),
-    UserDAL.recordSuccessfulWords(
-      uid,
-      completedEvent.language,
-      completedEvent.successfulWords ?? [],
-    ),
-  ]);
-  if (!completedEvent.funbox?.includes("weakspot")) {
-    await Promise.all([
-      UserDAL.recordMistypedCharacters(
-        uid,
-        completedEvent.language,
-        completedEvent.mistypedCharacters ?? [],
-      ),
-      UserDAL.recordTransposedCharacterPairs(
-        uid,
-        completedEvent.language,
-        completedEvent.transposedCharacterPairs ?? [],
-      ),
-      UserDAL.recordMistakeTypes(
-        uid,
-        completedEvent.language,
-        completedEvent.mistakeSummary ?? [],
-      ),
-    ]);
-  }
+  await recordResultStats(uid, {
+    language: completedEvent.language,
+    funbox: completedEvent.funbox,
+    mistypedCharacters: completedEvent.mistypedCharacters ?? [],
+    mistypedWords: completedEvent.mistypedWords ?? [],
+    successfulWords: completedEvent.successfulWords ?? [],
+    transposedCharacterPairs: completedEvent.transposedCharacterPairs ?? [],
+    mistakeSummary: completedEvent.mistakeSummary ?? [],
+  });
   void PublicDAL.updateStats(
     completedEvent.restartCount,
     totalDurationTypedSeconds,

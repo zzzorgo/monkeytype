@@ -629,6 +629,11 @@ describe("result controller test", () => {
       userCheckIfPbMock.mockResolvedValue(true);
       resultAddMock.mockResolvedValue({ insertedId });
       userIncrementXpMock.mockResolvedValue();
+      userRecordMistypedCharactersMock.mockResolvedValue();
+      userRecordMistypedWordsMock.mockResolvedValue();
+      userRecordSuccessfulWordsMock.mockResolvedValue();
+      userRecordTransposedCharacterPairsMock.mockResolvedValue();
+      userRecordMistakeTypesMock.mockResolvedValue();
     });
 
     it("should add result", async () => {
@@ -657,11 +662,9 @@ describe("result controller test", () => {
         "english",
         [{ original: "c", typed: "x" }],
       );
-      expect(userRecordMistypedWordsMock).toHaveBeenCalledWith(
-        uid,
-        "english",
-        ["cat"],
-      );
+      expect(userRecordMistypedWordsMock).toHaveBeenCalledWith(uid, "english", [
+        "cat",
+      ]);
       expect(userRecordSuccessfulWordsMock).toHaveBeenCalledWith(
         uid,
         "english",
@@ -672,11 +675,9 @@ describe("result controller test", () => {
         "english",
         [{ original: "ca", typed: "ac" }],
       );
-      expect(userRecordMistakeTypesMock).toHaveBeenCalledWith(
-        uid,
-        "english",
-        [{ type: "wrong_character", count: 1 }],
-      );
+      expect(userRecordMistakeTypesMock).toHaveBeenCalledWith(uid, "english", [
+        { type: "wrong_character", count: 1 },
+      ]);
       expect(body.data).toEqual({
         isPb: true,
         tagPbs: [],
@@ -757,11 +758,9 @@ describe("result controller test", () => {
         .expect(200);
 
       expect(userRecordMistypedCharactersMock).not.toHaveBeenCalled();
-      expect(userRecordMistypedWordsMock).toHaveBeenCalledWith(
-        uid,
-        "english",
-        ["word"],
-      );
+      expect(userRecordMistypedWordsMock).toHaveBeenCalledWith(uid, "english", [
+        "word",
+      ]);
       expect(userRecordSuccessfulWordsMock).toHaveBeenCalledWith(
         uid,
         "english",
@@ -770,6 +769,46 @@ describe("result controller test", () => {
       expect(userRecordTransposedCharacterPairsMock).not.toHaveBeenCalled();
       expect(userRecordMistakeTypesMock).not.toHaveBeenCalled();
     });
+
+    it("should record statistics without saving a result", async () => {
+      await mockApp
+        .post("/results/stats")
+        .set("Authorization", `Bearer ${uid}`)
+        .send({
+          language: "english",
+          funbox: [],
+          mistypedCharacters: [{ original: "c", typed: "x" }],
+          mistypedWords: ["cat"],
+          successfulWords: ["dog"],
+          transposedCharacterPairs: [{ original: "ca", typed: "ac" }],
+          mistakeSummary: [{ type: "wrong_character", count: 1 }],
+        })
+        .expect(200);
+
+      expect(userRecordMistypedWordsMock).toHaveBeenCalledWith(uid, "english", [
+        "cat",
+      ]);
+      expect(userRecordSuccessfulWordsMock).toHaveBeenCalledWith(
+        uid,
+        "english",
+        ["dog"],
+      );
+      expect(userRecordMistypedCharactersMock).toHaveBeenCalledWith(
+        uid,
+        "english",
+        [{ original: "c", typed: "x" }],
+      );
+      expect(userRecordTransposedCharacterPairsMock).toHaveBeenCalledWith(
+        uid,
+        "english",
+        [{ original: "ca", typed: "ac" }],
+      );
+      expect(userRecordMistakeTypesMock).toHaveBeenCalledWith(uid, "english", [
+        { type: "wrong_character", count: 1 },
+      ]);
+      expect(resultAddMock).not.toHaveBeenCalled();
+    });
+
     it("should fail if result saving is disabled", async () => {
       //GIVEN
       await enableResultsSaving(false);
