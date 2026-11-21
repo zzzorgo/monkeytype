@@ -142,13 +142,12 @@ services:
     networks:
       - default
 
-
   monkeytype-mongodb:
     container_name: monkeytype-mongodb
     image: mongo:5.0.13
     restart: unless-stopped
     volumes:
-      - ../.volumes/mongo-data:/data/db
+      - mongo-data:/data/db
     #uncomment if you want to expose the mongodb server
     #ports:
     #  - "${MONGO_PORT:-27017}:27017"
@@ -160,6 +159,11 @@ services:
       start_period: 10s
     networks:
       - default
+
+volumes:
+  mongo-data:
+    external: true
+    name: monkeytype_mongo_data
 
 networks:
   proxy:
