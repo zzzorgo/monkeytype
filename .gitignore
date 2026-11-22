@@ -99,6 +99,7 @@ backend/lastId.txt
 backend/log_success.txt
 backend/credentials/*.json
 backend/.env
+/docker/.env
 
 static/adtest.html
 backend/migrationStats.txt

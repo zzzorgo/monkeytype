@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   monkeytype-frontend:
     container_name: monkeytype-frontend
@@ -11,7 +9,7 @@ services:
     image: monkeytype-frontend-local:latest
 
     ports:
-      - "${HTTP_PORT:-8089}:80"
+      - "8089:80"
 
     restart: unless-stopped
 
@@ -21,18 +19,11 @@ services:
         restart: true
 
     env_file:
-      - path: ./.env
+      - path: /tank/secrets/monkeytype.env
         required: true
 
     environment:
-      - FIREBASE_APIKEY=${FIREBASE_APIKEY:-}
-      - FIREBASE_AUTHDOMAIN=${FIREBASE_AUTHDOMAIN:-}
-      - FIREBASE_PROJECTID=${FIREBASE_PROJECTID:-}
-      - FIREBASE_STORAGEBUCKET=${FIREBASE_STORAGEBUCKET:-}
-      - FIREBASE_MESSAGINGSENDERID=${FIREBASE_MESSAGINGSENDERID:-}
-      - FIREBASE_APPID=${FIREBASE_APPID:-}
       - MONKEYTYPE_BACKENDURL=/api
-      - RECAPTCHA_SITE_KEY=${RECAPTCHA_SITE_KEY:-}
     networks:
       - default
       - proxy
@@ -47,26 +38,23 @@ services:
     image: monkeytype-backend-local:latest
 
     ports:
-      - "${BACKEND_PORT:-5005}:5005"
+      - "5005:5005"
 
     restart: unless-stopped
+
+    env_file:
+      - path: /tank/secrets/monkeytype.env
+        required: true
 
     environment:
       - DB_NAME=monkeytype
       - DB_URI=mongodb://monkeytype-mongodb:27017
       - REDIS_URI=redis://monkeytype-redis:6379
       - WAIT_FOR_HOSTS=monkeytype-mongodb:27017 monkeytype-redis:6379
-      - FRONTEND_URL=${MONKEYTYPE_FRONTENDURL}
-      - RECAPTCHA_SECRET=${RECAPTCHA_SECRET:-}
-      - RATE_LIMIT_MULTIPLIER=${RATE_LIMIT_MULTIPLIER:-100000}
-      - OLLAMA_URL=${OLLAMA_URL:-http://host.docker.internal:11434}
-      - OLLAMA_TRANSLATION_MODEL=${OLLAMA_TRANSLATION_MODEL:-translategemma:4b}
-      - OLLAMA_CODE_MODEL=${OLLAMA_CODE_MODEL:-qwen2.5:7b-instruct-q6_K}
-      - EMAIL_HOST=${EMAIL_HOST:-}
-      - EMAIL_PORT=${EMAIL_PORT:-}
-      - EMAIL_USER=${EMAIL_USER:-}
-      - EMAIL_PASS=${EMAIL_PASS:-}
-      - EMAIL_FROM=${EMAIL_FROM:-}
+      - RATE_LIMIT_MULTIPLIER=100000
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - OLLAMA_TRANSLATION_MODEL=translategemma:4b
+      - OLLAMA_CODE_MODEL=qwen2.5:7b-instruct-q6_K
 
     networks:
       - default
